@@ -10,13 +10,15 @@ import (
 
 func main() {
 	config.Init()
-	config.Config.Logger.Info(logger.LogMessage{ApplicationPackage: "main", Message: "Starting GUH"})
 	if len(os.Args) > 1 {
-		config.Config.Logger.Info(logger.LogMessage{ApplicationPackage: "main", Message: "GUH CLI MODE"})
 		if err := cli.Handle(os.Args); err != nil {
 			panic(err)
 		}
 	} else {
-		config.Config.Logger.Info(logger.LogMessage{ApplicationPackage: "main", Message: "GUH DIDN'T FIND ANY COMMANDS"})
+		config.Config.Logger.Warning(logger.LogMessage{ApplicationPackage: "main", Message: "GUH DIDN'T FIND ANY COMMANDS"})
+		helpList := []string{"_", "help"}
+		if err := cli.Handle(helpList); err != nil {
+			panic(err)
+		}
 	}
 }

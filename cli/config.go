@@ -2,6 +2,7 @@ package cli
 
 import (
 	"flag"
+	"fmt"
 	"os"
 
 	"github.com/Arthur-Conti/guh/config"
@@ -16,7 +17,12 @@ func Config() error {
 	filePath = *fs.String("filePath", "./internal/config/", "The path where the file should go")
 	all := fs.Bool("all", false, "Create all configs")
 	logger := fs.Bool("logger", false, "Create logger config")
+	help := fs.Bool("help", false, "Help with config command")
 	fs.Parse(os.Args[2:])
+
+	if *help {
+		HelpConfig()
+	}
 
 	if *all {
 		return AllConfigs()
@@ -98,14 +104,34 @@ func createFiles(filePath, content string) error {
 		return nil
 	} else if !os.IsNotExist(err) {
 		config.Config.Logger.Infof(logger.LogMessage{ApplicationPackage: "cli", Message: "Error checking file: %v\n", Vals: []any{err}})
-		return errorhandler.Wrap("InternalServerError", "Error checking file", err)
+		return errorhandler.Wrap(errorhandler.InternalServerError, "Error checking file", err)
 	}
 
 	if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error writing file: %v\n", Vals: []any{err}})
-		return errorhandler.Wrap("InternalServerError", "Error writing file", err)
+		return errorhandler.Wrap(errorhandler.InternalServerError, "Error writing file", err)
 	}
 	config.Config.Logger.Infof(logger.LogMessage{ApplicationPackage: "cli", Message: "%v generated successfully.", Vals: []any{filePath}})
 
 	return nil
+}
+
+func HelpConfig() {
+	fmt.Println(`config - The config command help you creating your config files to you 
+
+Usage:
+  guh config [flags]
+
+Flags:
+  --filePath       Define where the config files must be created (Defaults to ./internal/config/)
+  --all            If true creates all config files
+  --logger         Creates only the logger file
+  
+Examples:
+  guh compose --filePath=./
+  guh compose --all
+  guh compose --filePath=./config/ --logger
+
+For more information, visit: https://github.com/Arthur-Conti/guh`)
+	os.Exit(0)
 }

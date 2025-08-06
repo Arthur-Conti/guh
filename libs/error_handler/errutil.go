@@ -6,7 +6,39 @@ import (
 	"net/http"
 )
 
-var statusMap = map[string]int{
+type ErrorType string
+
+var (
+	BadRequest                   ErrorType = "BadRequest"
+	Unauthorized                 ErrorType = "Unauthorized"
+	PaymentRequired              ErrorType = "PaymentRequired"
+	Forbidden                    ErrorType = "Forbidden"
+	NotFound                     ErrorType = "NotFound"
+	MethodNotAllowed             ErrorType = "MethodNotAllowed"
+	NotAcceptable                ErrorType = "NotAcceptable"
+	ProxyAuthRequired            ErrorType = "Proxy AuthRequired"
+	RequestTimeout               ErrorType = "RequestTimeout"
+	Conflict                     ErrorType = "Conflict"
+	Gone                         ErrorType = "Gone"
+	LengthRequired               ErrorType = "LengthRequired"
+	PreconditionFailed           ErrorType = "PreconditionFailed"
+	RequestEntityTooLarge        ErrorType = "RequestEntityTooLarge"
+	RequestURITooLong            ErrorType = "RequestURITooLong"
+	UnsupportedMediaType         ErrorType = "UnsupportedMediaType"
+	RequestedRangeNotSatisfiable ErrorType = "RequestedRangeNotSatisfiable"
+	ExpectationFailed            ErrorType = "ExpectationFailed"
+	Teapot                       ErrorType = "Teapot"
+	UnprocessableEntity          ErrorType = "UnprocessableEntity"
+	TooManyRequests              ErrorType = "TooManyRequests"
+	InternalServerError          ErrorType = "InternalServerError"
+	NotImplemented               ErrorType = "NotImplemented"
+	BadGateway                   ErrorType = "BadGateway"
+	ServiceUnavailable           ErrorType = "ServiceUnavailable"
+	GatewayTimeout               ErrorType = "GatewayTimeout"
+	HTTPVersionNotSupported      ErrorType = "HTTPVersionNotSupported"
+)
+
+var statusMap = map[ErrorType]int{
 	"BadRequest":                   http.StatusBadRequest,                   // 400
 	"Unauthorized":                 http.StatusUnauthorized,                 // 401
 	"PaymentRequired":              http.StatusPaymentRequired,              // 402
@@ -38,7 +70,7 @@ var statusMap = map[string]int{
 
 type Error struct {
 	StatusCode int
-	ErrorType  string
+	ErrorType  ErrorType
 	Message    string
 	Err        error
 }
@@ -54,15 +86,15 @@ func (e *Error) Unwrap() error {
 	return e.Err
 }
 
-func New(errorType, message string) error {
+func New(errorType ErrorType, message string) error {
 	return &Error{StatusCode: statusMap[errorType], ErrorType: errorType, Message: message}
 }
 
-func Wrap(errorType, message string, err error) error {
+func Wrap(errorType ErrorType, message string, err error) error {
 	return &Error{StatusCode: statusMap[errorType], ErrorType: errorType, Message: message, Err: err}
 }
 
-func Is(err error, errorType string) bool {
+func Is(err error, errorType ErrorType) bool {
 	var e *Error
 	if errors.As(err, &e) {
 		return e.StatusCode == statusMap[errorType]

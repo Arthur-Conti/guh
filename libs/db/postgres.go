@@ -88,7 +88,7 @@ volumes:
 	err := os.WriteFile("./"+fileName, []byte(content), 0644)
 	if err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "DB", Message: "Error writing file: %v\n", Vals: []any{err}})
-		return errorhandler.Wrap("InternalServerError", "error writing file", err)
+		return errorhandler.Wrap(errorhandler.InternalServerError, "error writing file", err)
 	}
 
 	config.Config.Logger.Info(logger.LogMessage{ApplicationPackage: "DB", Message: "docker-compose.yml generated successfully."})

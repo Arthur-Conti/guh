@@ -10,6 +10,8 @@ func Handle(args []string) error {
 		return Structure()
 	case "mod":
 		return Mod()
+	case "help":
+		Help()
 	}
 	return nil
 }

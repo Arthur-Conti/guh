@@ -20,7 +20,7 @@ func NewLocalEnvs(filePath string) *LocalEnvs {
 func (le *LocalEnvs) LoadDotEnv() error {
 	if err := godotenv.Load(le.FilePath); err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "envlocations", Message: "Error loading %v: %v\n", Vals: []any{le.FilePath, err}})
-		return errorhandler.Wrap("InternalServerError", "error loading "+le.FilePath, err)
+		return errorhandler.Wrap(errorhandler.InternalServerError, "error loading "+le.FilePath, err)
 	}
 	return nil
 }

@@ -16,7 +16,12 @@ func Structure() error {
 	fs := flag.NewFlagSet("structure", flag.ExitOnError)
 	create := fs.Bool("create", false, "Create the project structure")
 	showFirst := fs.Bool("showFirst", false, "Show the structure before creating it")
+	help := fs.Bool("help", false, "Help with structure command")
 	fs.Parse(os.Args[2:])
+
+	if *help {
+		HelpStructure()
+	}
 
 	if *create {
 		return createStructure()
@@ -74,7 +79,7 @@ func main() {
 	for filePath, content := range fileMap {
 		if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
 			config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error creating file %v: %v\n", Vals: []any{filePath, err}})
-			return errorhandler.Wrap("InternalServerError", "error creating file "+filePath, err)
+			return errorhandler.Wrap(errorhandler.InternalServerError, "error creating file "+filePath, err)
 		}
 	}
 	return nil
@@ -84,7 +89,7 @@ func createDir(dirList []string, pathToCreate string) error {
 	for _, dir := range dirList {
 		if err := os.MkdirAll(filepath.Join(pathToCreate, dir), 0755); err != nil {
 			config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error creating dir %v: %v\n", Vals: []any{dir, err}})
-			return errorhandler.Wrap("InternalServerError", "error creating dir "+dir, err)
+			return errorhandler.Wrap(errorhandler.InternalServerError, "error creating dir "+dir, err)
 		}
 	}
 
@@ -114,4 +119,22 @@ func showStructure() {
 		fmt.Println(line)
 	}
 	fmt.Println()
+}
+
+func HelpStructure() {
+	fmt.Println(`structure - The structure command help you creating the initial core structure for your project  
+
+Usage:
+  guh structure [flags]
+
+Flags:
+  --create         Creates your initial core structure for your project  
+  --showFirst      Shows the structure that is gonna be created before it creates it
+
+Examples:
+  guh structure --create
+  guh structure --showFirst
+
+For more information, visit: https://github.com/Arthur-Conti/guh`)
+	os.Exit(0)
 }
