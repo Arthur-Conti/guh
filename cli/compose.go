@@ -7,7 +7,7 @@ import (
 
 	"github.com/Arthur-Conti/guh/config"
 	"github.com/Arthur-Conti/guh/packages/db"
-	"github.com/Arthur-Conti/logger/logger"
+	"github.com/Arthur-Conti/guh/packages/log/logger"
 )
 
 func Compose() error {

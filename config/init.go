@@ -1,6 +1,6 @@
 package config
 
-import "github.com/Arthur-Conti/logger/logger"
+import "github.com/Arthur-Conti/guh/packages/log/logger"
 
 type BaseConfigs struct {
 	Logger *logger.Logger

@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/Arthur-Conti/guh/config"
-	"github.com/Arthur-Conti/logger/logger"
+	"github.com/Arthur-Conti/guh/packages/log/logger"
 	"github.com/jackc/pgx/v5"
 )
 
