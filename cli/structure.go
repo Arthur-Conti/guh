@@ -6,6 +6,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/Arthur-Conti/guh/config"
+	errorhandler "github.com/Arthur-Conti/guh/packages/error_handler"
+	"github.com/Arthur-Conti/guh/packages/log/logger"
 )
 
 func Structure() error {
@@ -60,8 +64,7 @@ import "fmt"
 func main() {
 	fmt.Println("Hello from GUH!")
 }`,
-		"./.env": `
-'DB_USER': 'user_test'
+		"./.env": `'DB_USER': 'user_test'
 'DB_PASS': 'pass_test'
 'DB_IP': 'localhost'
 'DB_PORT': '5432'
@@ -70,7 +73,8 @@ func main() {
 	}
 	for filePath, content := range fileMap {
 		if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
-			return err
+			config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error creating file %v: %v\n", Vals: []any{filePath, err}})
+			return errorhandler.Wrap("InternalServerError", "error creating file "+filePath, err)
 		}
 	}
 	return nil
@@ -79,7 +83,8 @@ func main() {
 func createDir(dirList []string, pathToCreate string) error {
 	for _, dir := range dirList {
 		if err := os.MkdirAll(filepath.Join(pathToCreate, dir), 0755); err != nil {
-			return err
+			config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error creating dir %v: %v\n", Vals: []any{dir, err}})
+			return errorhandler.Wrap("InternalServerError", "error creating dir "+dir, err)
 		}
 	}
 

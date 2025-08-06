@@ -5,7 +5,6 @@ import (
 
 	"github.com/Arthur-Conti/guh/cli"
 	"github.com/Arthur-Conti/guh/config"
-	"github.com/Arthur-Conti/guh/packages/db"
 	"github.com/Arthur-Conti/guh/packages/log/logger"
 )
 
@@ -18,10 +17,6 @@ func main() {
 			panic(err)
 		}
 	} else {
-		config.Config.Logger.Info(logger.LogMessage{ApplicationPackage: "main", Message: "GUH PACKAGE MODE"})		
-		_, err := db.DefaultPostgres()
-		if err != nil {
-			config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "main", Message: "Error connecting to postgres: %v", Vals: []any{err}})
-		}
+		config.Config.Logger.Info(logger.LogMessage{ApplicationPackage: "main", Message: "GUH DIDN'T FIND ANY COMMANDS"})
 	}
 }

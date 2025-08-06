@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/Arthur-Conti/guh/config"
+	errorhandler "github.com/Arthur-Conti/guh/packages/error_handler"
 	"github.com/Arthur-Conti/guh/packages/log/logger"
 	"github.com/jackc/pgx/v5"
 )
@@ -41,13 +42,13 @@ func postgresInit(uri string) (*pgx.Conn, error) {
 	conn, err := pgx.Connect(context.Background(), uri)
 	if err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "DB", Message: "Unable to connect to database: %v\n", Vals: []any{err}})
-		return nil, err
+		return nil, errorhandler.Wrap("InternalServerError", "unable to connect to database", err)
 	}
 	defer conn.Close(context.Background())
 	err = conn.Ping(context.Background())
 	if err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "DB", Message: "Ping failed: %v\n", Vals: []any{err}})
-		return nil, err
+		return nil, errorhandler.Wrap("ServiceUnavailable", "ping failed", err)
 	}
 	config.Config.Logger.Info(logger.LogMessage{ApplicationPackage: "DB", Message: "Connected to PostgreSQL successfully!"})
 	return conn, nil
@@ -87,7 +88,7 @@ volumes:
 	err := os.WriteFile("./" + fileName, []byte(content), 0644)
 	if err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "DB", Message: "Error writing file: %v\n", Vals: []any{err}})		
-		return err
+		return errorhandler.Wrap("InternalServerError", "error writing file", err)
 	}
 
 	config.Config.Logger.Info(logger.LogMessage{ApplicationPackage: "DB", Message: "docker-compose.yml generated successfully."})

@@ -8,6 +8,8 @@ func Handle(args []string) error {
 		return Config()
 	case "structure":
 		return Structure()
+	case "mod":
+		return Mod()
 	}
 	return nil
 }

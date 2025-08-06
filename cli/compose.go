@@ -7,6 +7,7 @@ import (
 
 	"github.com/Arthur-Conti/guh/config"
 	"github.com/Arthur-Conti/guh/packages/db"
+	errorhandler "github.com/Arthur-Conti/guh/packages/error_handler"
 	"github.com/Arthur-Conti/guh/packages/log/logger"
 )
 
@@ -32,15 +33,17 @@ func Compose() error {
 		}
 		if err := db.PostgresDockerCompose(opts); err != nil {
 			config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error creating docker compose: %v\n", Vals: []any{err}})
+			return err
 		}
 	}
 
 	if *run {
 		if err := RunCompose(); err != nil {
+			config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error running docker compose: %v\n", Vals: []any{err}})
 			return err
 		}
 	}
-
+	
 	return nil
 }
 
@@ -48,11 +51,11 @@ func RunCompose() error {
 	cmd := exec.Command("docker", "compose", "up", "--build", "-d")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-
+	
 	config.Config.Logger.Info(logger.LogMessage{ApplicationPackage: "cli", Message: "Running docker-compose up -d..."})
 	if err := cmd.Run(); err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error running docker-compose: %v\n", Vals: []any{err}})
-		return err
+		return errorhandler.Wrap("InternalServerError", "Error running docker-compose", err)
 	}
 	config.Config.Logger.Info(logger.LogMessage{ApplicationPackage: "cli", Message: "Docker Compose started successfully."})
 	return nil
