@@ -3,7 +3,7 @@ package outputs
 import (
 	"fmt"
 
-	loglevels "github.com/Arthur-Conti/guh/packages/log/log_levels"
+	loglevels "github.com/Arthur-Conti/guh/libs/log/log_levels"
 )
 
 type PlainOutput struct {
@@ -40,12 +40,12 @@ func (po *PlainOutput) Logf(applicationPackage string, level loglevels.LogLevel,
 	backSlashN := "\n"
 	switch level {
 	case loglevels.DebugLevel:
-		fmt.Printf(applicationPackage + po.opts.DebugPattern+message+backSlashN, vals...)
+		fmt.Printf(applicationPackage+po.opts.DebugPattern+message+backSlashN, vals...)
 	case loglevels.WarningLevel:
-		fmt.Printf(applicationPackage + po.opts.WarningPattern+message+backSlashN, vals...)
+		fmt.Printf(applicationPackage+po.opts.WarningPattern+message+backSlashN, vals...)
 	case loglevels.InfoLevel:
-		fmt.Printf(applicationPackage + po.opts.InfoPattern+message+backSlashN, vals...)
+		fmt.Printf(applicationPackage+po.opts.InfoPattern+message+backSlashN, vals...)
 	case loglevels.ErrorLevel:
-		fmt.Printf(applicationPackage + po.opts.ErrorPattern+message+backSlashN, vals...)
+		fmt.Printf(applicationPackage+po.opts.ErrorPattern+message+backSlashN, vals...)
 	}
 }

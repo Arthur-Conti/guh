@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/Arthur-Conti/guh/config"
-	errorhandler "github.com/Arthur-Conti/guh/packages/error_handler"
-	"github.com/Arthur-Conti/guh/packages/log/logger"
+	errorhandler "github.com/Arthur-Conti/guh/libs/error_handler"
+	"github.com/Arthur-Conti/guh/libs/log/logger"
 )
 
 func Structure() error {

@@ -6,9 +6,9 @@ import (
 	"os/exec"
 
 	"github.com/Arthur-Conti/guh/config"
-	"github.com/Arthur-Conti/guh/packages/db"
-	errorhandler "github.com/Arthur-Conti/guh/packages/error_handler"
-	"github.com/Arthur-Conti/guh/packages/log/logger"
+	"github.com/Arthur-Conti/guh/libs/db"
+	errorhandler "github.com/Arthur-Conti/guh/libs/error_handler"
+	"github.com/Arthur-Conti/guh/libs/log/logger"
 )
 
 func Compose() error {
@@ -21,14 +21,14 @@ func Compose() error {
 	database := fs.String("database", "default", "DB database name")
 	run := fs.Bool("run", false, "Run compose")
 	fs.Parse(os.Args[2:])
-	
+
 	switch *dbName {
 	case "Postgres":
 		opts := db.PostgresOpts{
-			User: *user,
+			User:     *user,
 			Password: *pass,
-			IP: *ip,
-			Port: *port,
+			IP:       *ip,
+			Port:     *port,
 			Database: *database,
 		}
 		if err := db.PostgresDockerCompose(opts); err != nil {
@@ -43,7 +43,7 @@ func Compose() error {
 			return err
 		}
 	}
-	
+
 	return nil
 }
 
@@ -51,7 +51,7 @@ func RunCompose() error {
 	cmd := exec.Command("docker", "compose", "up", "--build", "-d")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	
+
 	config.Config.Logger.Info(logger.LogMessage{ApplicationPackage: "cli", Message: "Running docker-compose up -d..."})
 	if err := cmd.Run(); err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error running docker-compose: %v\n", Vals: []any{err}})

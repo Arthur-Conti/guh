@@ -1,9 +1,9 @@
 package config
 
 import (
-	applicationpackage "github.com/Arthur-Conti/guh/packages/log/application_package"
-	"github.com/Arthur-Conti/guh/packages/log/logger"
-	"github.com/Arthur-Conti/guh/packages/log/outputs"
+	applicationpackage "github.com/Arthur-Conti/guh/libs/log/application_package"
+	"github.com/Arthur-Conti/guh/libs/log/logger"
+	"github.com/Arthur-Conti/guh/libs/log/outputs"
 )
 
 func InitLogger() *logger.Logger {

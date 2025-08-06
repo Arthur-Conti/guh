@@ -7,8 +7,8 @@ import (
 	"os/exec"
 
 	"github.com/Arthur-Conti/guh/config"
-	errorhandler "github.com/Arthur-Conti/guh/packages/error_handler"
-	"github.com/Arthur-Conti/guh/packages/log/logger"
+	errorhandler "github.com/Arthur-Conti/guh/libs/error_handler"
+	"github.com/Arthur-Conti/guh/libs/log/logger"
 )
 
 const noDefaultGithubURL string = "no_default_github_url"
@@ -73,7 +73,13 @@ func modConfiguration(modName string) error {
 	if err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error running 'go mod init %v' command: %v\n", Vals: []any{modName, err}})
 		return errorhandler.Wrap("InternalServerError", fmt.Sprintf("Error running 'go mod init %v' command", modName), err)
-	}	
+	}
+	cmd = exec.Command("go", "clean", "-modcache")
+	_, err = cmd.CombinedOutput()
+	if err != nil {
+		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error running 'go clean -modcache' command: %v\n", Vals: []any{err}})
+		return errorhandler.Wrap("InternalServerError", "Error running 'go clean -modcache' command", err)
+	}
 	cmd = exec.Command("go", "get", "-u", "github.com/Arthur-Conti/guh")
 	_, err = cmd.CombinedOutput()
 	if err != nil {
@@ -90,7 +96,7 @@ func modConfiguration(modName string) error {
 	return nil
 }
 
-func ginDownload() error {	 
+func ginDownload() error {
 	config.Config.Logger.Info(logger.LogMessage{ApplicationPackage: "cli", Message: "Downloading gin"})
 	cmd := exec.Command("go", "get", "-u", "github.com/gin-gonic/gin")
 	_, err := cmd.CombinedOutput()

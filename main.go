@@ -5,14 +5,14 @@ import (
 
 	"github.com/Arthur-Conti/guh/cli"
 	"github.com/Arthur-Conti/guh/config"
-	"github.com/Arthur-Conti/guh/packages/log/logger"
+	"github.com/Arthur-Conti/guh/libs/log/logger"
 )
 
 func main() {
 	config.Init()
 	config.Config.Logger.Info(logger.LogMessage{ApplicationPackage: "main", Message: "Starting GUH"})
 	if len(os.Args) > 1 {
-		config.Config.Logger.Info(logger.LogMessage{ApplicationPackage: "main", Message: "GUH CLI MODE"})		
+		config.Config.Logger.Info(logger.LogMessage{ApplicationPackage: "main", Message: "GUH CLI MODE"})
 		if err := cli.Handle(os.Args); err != nil {
 			panic(err)
 		}

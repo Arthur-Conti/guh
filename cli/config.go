@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/Arthur-Conti/guh/config"
-	errorhandler "github.com/Arthur-Conti/guh/packages/error_handler"
-	"github.com/Arthur-Conti/guh/packages/log/logger"
+	errorhandler "github.com/Arthur-Conti/guh/libs/error_handler"
+	"github.com/Arthur-Conti/guh/libs/log/logger"
 )
 
 var filePath string
@@ -46,7 +46,7 @@ func InitConfig() error {
 	fileName := "init.go"
 	content := `package config
 
-import "github.com/Arthur-Conti/guh/packages/log/logger"
+import "github.com/Arthur-Conti/guh/libs/log/logger"
 
 type BaseConfigs struct {
 	Logger *logger.Logger
@@ -67,9 +67,9 @@ func LoggerConfig() error {
 	content := `package config
 
 import (
-	applicationpackage "github.com/Arthur-Conti/guh/packages/log/application_package"
-	"github.com/Arthur-Conti/guh/packages/log/logger"
-	"github.com/Arthur-Conti/guh/packages/log/outputs"
+	applicationpackage "github.com/Arthur-Conti/guh/libs/log/application_package"
+	"github.com/Arthur-Conti/guh/libs/log/logger"
+	"github.com/Arthur-Conti/guh/libs/log/outputs"
 )
 
 func InitLogger() *logger.Logger {

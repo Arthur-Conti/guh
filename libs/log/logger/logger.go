@@ -1,9 +1,9 @@
 package logger
 
 import (
-	applicationpackage "github.com/Arthur-Conti/guh/packages/log/application_package"
-	loglevels "github.com/Arthur-Conti/guh/packages/log/log_levels"
-	"github.com/Arthur-Conti/guh/packages/log/outputs"
+	applicationpackage "github.com/Arthur-Conti/guh/libs/log/application_package"
+	loglevels "github.com/Arthur-Conti/guh/libs/log/log_levels"
+	"github.com/Arthur-Conti/guh/libs/log/outputs"
 )
 
 var levelParse = map[string]int{

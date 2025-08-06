@@ -4,8 +4,8 @@ import (
 	"os"
 
 	"github.com/Arthur-Conti/guh/config"
-	errorhandler "github.com/Arthur-Conti/guh/packages/error_handler"
-	"github.com/Arthur-Conti/guh/packages/log/logger"
+	errorhandler "github.com/Arthur-Conti/guh/libs/error_handler"
+	"github.com/Arthur-Conti/guh/libs/log/logger"
 	"github.com/joho/godotenv"
 )
 
@@ -34,7 +34,7 @@ func (le *LocalEnvs) Get(key string) string {
 }
 
 func (le *LocalEnvs) GetOrDefault(key, defaultVal string) string {
-	val := le.Get(key) 
+	val := le.Get(key)
 	if val == "" {
 		return defaultVal
 	}

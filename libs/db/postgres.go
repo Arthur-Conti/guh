@@ -6,29 +6,29 @@ import (
 	"os"
 
 	"github.com/Arthur-Conti/guh/config"
-	errorhandler "github.com/Arthur-Conti/guh/packages/error_handler"
-	"github.com/Arthur-Conti/guh/packages/log/logger"
+	errorhandler "github.com/Arthur-Conti/guh/libs/error_handler"
+	"github.com/Arthur-Conti/guh/libs/log/logger"
 	"github.com/jackc/pgx/v5"
 )
 
 type PostgresOpts struct {
-	User                  string
-	Password              string
-	Database              string
-	IP                    string
-	Port                  string
+	User     string
+	Password string
+	Database string
+	IP       string
+	Port     string
 }
 
 func DefaultPostgres() (*pgx.Conn, error) {
 	opts := PostgresOpts{
-		User: "user_test",
+		User:     "user_test",
 		Password: "pass_test",
-		IP: "localhost",
-		Port: "5432",
+		IP:       "localhost",
+		Port:     "5432",
 		Database: "default",
 	}
 	return postgresInit(postgresUri(opts))
-} 
+}
 
 func Postgres(opts PostgresOpts) (*pgx.Conn, error) {
 	return postgresInit(postgresUri(opts))
@@ -61,10 +61,10 @@ func PostgresDockerCompose(opts PostgresOpts) error {
 		config.Config.Logger.Infof(logger.LogMessage{ApplicationPackage: "DB", Message: "File '%s' already exists. Skipping creation.", Vals: []any{fileName}})
 		return nil
 	} else if !os.IsNotExist(err) {
-		config.Config.Logger.Infof(logger.LogMessage{ApplicationPackage: "DB", Message: "Error checking file: %v\n", Vals: []any{err}})	
+		config.Config.Logger.Infof(logger.LogMessage{ApplicationPackage: "DB", Message: "Error checking file: %v\n", Vals: []any{err}})
 		return nil
 	}
-	
+
 	content := fmt.Sprintf(`version: '3.8'
 
 services:
@@ -85,9 +85,9 @@ volumes:
   postgres_data:
 `, opts.User, opts.Password, opts.Database, opts.Port)
 
-	err := os.WriteFile("./" + fileName, []byte(content), 0644)
+	err := os.WriteFile("./"+fileName, []byte(content), 0644)
 	if err != nil {
-		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "DB", Message: "Error writing file: %v\n", Vals: []any{err}})		
+		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "DB", Message: "Error writing file: %v\n", Vals: []any{err}})
 		return errorhandler.Wrap("InternalServerError", "error writing file", err)
 	}
 

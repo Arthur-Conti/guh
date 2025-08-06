@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	loglevels "github.com/Arthur-Conti/guh/packages/log/log_levels"
+	loglevels "github.com/Arthur-Conti/guh/libs/log/log_levels"
 )
 
 type JsonMessage struct {
