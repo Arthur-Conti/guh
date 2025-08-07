@@ -70,10 +70,10 @@ func main() {
 	fmt.Println("Hello from GUH!")
 }`,
 		"./.env": `'DB_USER': 'user_test'
-'DB_PASS': 'pass_test'
-'DB_IP': 'localhost'
-'DB_PORT': '5432'
-'DB_DATABASE': 'default'
+DB_PASS: 'pass_test'
+DB_IP: 'localhost'
+DB_PORT: '5432'
+DB_DATABASE: 'default'
 		`,
 	}
 	for filePath, content := range fileMap {

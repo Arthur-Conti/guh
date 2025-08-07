@@ -12,6 +12,8 @@ func Handle(args []string) error {
 		return Mod()
 	case "help":
 		Help()
+	case "-v":
+		PrintVersion()
 	}
 	return nil
 }
