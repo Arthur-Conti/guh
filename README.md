@@ -291,5 +291,3 @@ GUH ships with reusable packages under `libs/` that you can import in your servi
 
 ## Contributing
 Issues and PRs are welcome. If you add new commands or flags, please update this README and the per-command help text.
-
-# guh
