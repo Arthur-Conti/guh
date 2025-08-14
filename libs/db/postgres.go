@@ -2,16 +2,22 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
-	"os"
+	"reflect"
+	"strconv"
+	"strings"
 
 	"github.com/Arthur-Conti/guh/config"
+	envhandler "github.com/Arthur-Conti/guh/libs/env_handler"
+	envlocations "github.com/Arthur-Conti/guh/libs/env_handler/env_locations"
 	errorhandler "github.com/Arthur-Conti/guh/libs/error_handler"
 	"github.com/Arthur-Conti/guh/libs/log/logger"
-	"github.com/jackc/pgx/v5"
+	_ "github.com/lib/pq"
 )
 
 type PostgresOpts struct {
+	Ctx      context.Context
 	User     string
 	Password string
 	Database string
@@ -19,78 +25,279 @@ type PostgresOpts struct {
 	Port     string
 }
 
-func DefaultPostgres() (*pgx.Conn, error) {
-	opts := PostgresOpts{
-		User:     "user_test",
-		Password: "pass_test",
-		IP:       "localhost",
-		Port:     "5432",
-		Database: "default",
-	}
-	return postgresInit(postgresUri(opts))
+type Postgres struct {
+	Opts PostgresOpts
+	Conn *sql.DB
 }
 
-func Postgres(opts PostgresOpts) (*pgx.Conn, error) {
-	return postgresInit(postgresUri(opts))
-}
-
-func postgresUri(opts PostgresOpts) string {
-	return fmt.Sprintf("postgres://%v:%v@%v:%v/%v", opts.User, opts.Password, opts.IP, opts.Port, opts.Database)
-}
-
-func postgresInit(uri string) (*pgx.Conn, error) {
-	conn, err := pgx.Connect(context.Background(), uri)
-	if err != nil {
-		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "DB", Message: "Unable to connect to database: %v\n", Vals: []any{err}})
-		return nil, errorhandler.Wrap("InternalServerError", "unable to connect to database", err)
-	}
-	defer conn.Close(context.Background())
-	err = conn.Ping(context.Background())
-	if err != nil {
-		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "DB", Message: "Ping failed: %v\n", Vals: []any{err}})
-		return nil, errorhandler.Wrap("ServiceUnavailable", "ping failed", err)
-	}
-	config.Config.Logger.Info(logger.LogMessage{ApplicationPackage: "DB", Message: "Connected to PostgreSQL successfully!"})
-	return conn, nil
-}
-
-func PostgresDockerCompose(opts PostgresOpts) error {
-	fileName := "docker-compose.yml"
-
-	if _, err := os.Stat(fileName); err == nil {
-		config.Config.Logger.Infof(logger.LogMessage{ApplicationPackage: "DB", Message: "File '%s' already exists. Skipping creation.", Vals: []any{fileName}})
-		return nil
-	} else if !os.IsNotExist(err) {
-		config.Config.Logger.Infof(logger.LogMessage{ApplicationPackage: "DB", Message: "Error checking file: %v\n", Vals: []any{err}})
+func GetDefaultPostgresOpts() *PostgresOpts {
+	env := envhandler.NewEnvs(envlocations.NewLocalEnvs("./.env"))
+	if err := env.EnvLocation.LoadDotEnv(); err != nil {
+		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Error loading env: %v\n", Vals: []any{err}})
 		return nil
 	}
+	return &PostgresOpts{
+		Ctx:      context.Background(),
+		User:     env.EnvLocation.Get("DB_USER"),
+		Password: env.EnvLocation.Get("DB_PASS"),
+		IP:       env.EnvLocation.Get("DB_IP"),
+		Port:     env.EnvLocation.Get("DB_PORT"),
+		Database: env.EnvLocation.Get("DB_DATABASE"),
+	}
+}
 
-	content := fmt.Sprintf(`version: '3.8'
+func DefaultPostgres() (*Postgres, error) {
+	p := NewPostgres(*GetDefaultPostgresOpts())
+	if err := p.Connect(); err != nil {
+		return nil, err
+	}
+	return p, nil
+}
 
-services:
-  postgres:
-    image: postgres:15
-    container_name: postgres_container
-    restart: always
-    environment:
-      POSTGRES_USER: %[1]v
-      POSTGRES_PASSWORD: %[2]v
-      POSTGRES_DB: %[3]v
-    ports:
-      - "%[4]v:%[4]v"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+func NewPostgres(opts PostgresOpts) *Postgres {
+	return &Postgres{
+		Opts: opts,
+	}
+}
 
-volumes:
-  postgres_data:
-`, opts.User, opts.Password, opts.Database, opts.Port)
+func (p *Postgres) Connect() error {
+	return p.init()
+}
 
-	err := os.WriteFile("./"+fileName, []byte(content), 0644)
+func (p *Postgres) Close() error {
+	if err := p.Conn.Close(); err != nil {
+		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Error closing db: %v\n", Vals: []any{err}})
+		return errorhandler.Wrap(errorhandler.InternalServerError, "Error closing db", err)
+	}
+	return nil
+}
+
+func (p *Postgres) uri() string {
+	return fmt.Sprintf("postgres://%v:%v@%v:%v/%v?sslmode=disable", p.Opts.User, p.Opts.Password, p.Opts.IP, p.Opts.Port, p.Opts.Database)
+}
+
+func (p *Postgres) init() error {
+	conn, err := sql.Open("postgres", p.uri())
 	if err != nil {
-		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "DB", Message: "Error writing file: %v\n", Vals: []any{err}})
-		return errorhandler.Wrap(errorhandler.InternalServerError, "error writing file", err)
+		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Unable to connect to database: %v\n", Vals: []any{err}})
+		return errorhandler.Wrap("InternalServerError", "unable to connect to database", err)
+	}
+	err = conn.Ping()
+	if err != nil {
+		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Ping failed: %v\n", Vals: []any{err}})
+		return errorhandler.Wrap("ServiceUnavailable", "ping failed", err)
+	}
+	config.Config.Logger.Info(logger.LogMessage{ApplicationPackage: "db", Message: "Connected to PostgreSQL successfully!"})
+	p.Conn = conn
+	return nil
+}
+
+func (p *Postgres) CreateTable(sql string) error {
+	_, err := p.Conn.Query(sql)
+	if err != nil {
+		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Error creating table: %v\n", Vals: []any{err}})
+		return errorhandler.Wrap(errorhandler.InternalServerError, "Error creating table", err)
+	}
+	return nil
+}
+
+func (p *Postgres) QueryRow(dest any, query string, args ...any) error {
+	v := reflect.ValueOf(dest)
+	if v.Kind() != reflect.Ptr || v.Elem().Kind() != reflect.Struct {
+		config.Config.Logger.Error(logger.LogMessage{ApplicationPackage: "db", Message: "dest must be a pointer to a struct"})
+		return errorhandler.New(errorhandler.BadRequest, "dest must be a pointer to a struct")
 	}
 
-	config.Config.Logger.Info(logger.LogMessage{ApplicationPackage: "DB", Message: "docker-compose.yml generated successfully."})
+	rows, err := p.Conn.Query(query, args...)
+	if err != nil {
+		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Query failed: %s\n", Vals: []any{err}})
+		return errorhandler.Wrap(errorhandler.InternalServerError, "Query failed", err)
+	}
+	defer rows.Close()
+
+	if !rows.Next() {
+		config.Config.Logger.Error(logger.LogMessage{ApplicationPackage: "db", Message: "Error no rows"})
+		return errorhandler.New(errorhandler.InternalServerError, "error no rows")
+	}
+
+	columns, err := rows.Columns()
+	if err != nil {
+		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Failed to get columns: %v\n", Vals: []any{err}})
+		return errorhandler.Wrap(errorhandler.InternalServerError, "Failed to get columns", err)
+	}
+
+	values := make([]any, len(columns))
+	valuePtrs := make([]any, len(columns))
+	for i := range values {
+		valuePtrs[i] = &values[i]
+	}
+
+	if err := rows.Scan(valuePtrs...); err != nil {
+		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Failed to scan row: %v\n", Vals: []any{err}})
+		return errorhandler.Wrap(errorhandler.InternalServerError, "Failed to scan row", err)
+	}
+
+	structValue := v.Elem()
+	structType := structValue.Type()
+
+	for i, colName := range columns {
+		for j := 0; j < structType.NumField(); j++ {
+			field := structType.Field(j)
+			tag := field.Tag.Get("db")
+			if tag == "" {
+				tag = strings.ToLower(field.Name)
+			}
+
+			if strings.EqualFold(tag, colName) {
+				fieldValue := structValue.Field(j)
+				if fieldValue.CanSet() {
+					err := setFieldValue(fieldValue, values[i])
+					if err != nil {
+						config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Error setting field: %v\n", Vals: []any{err}})
+						return errorhandler.Wrap(errorhandler.InternalServerError, "Error setting field", err)
+					}
+				}
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+func (p *Postgres) Query(dest any, query string, args ...any) error {
+	ptrVal := reflect.ValueOf(dest)
+	if ptrVal.Kind() != reflect.Ptr {
+		config.Config.Logger.Error(logger.LogMessage{ApplicationPackage: "db", Message: "dest must be a pointer to a slice"})
+		return errorhandler.New(errorhandler.BadRequest, "dest must be a pointer to a slice")
+	}
+	sliceVal := ptrVal.Elem()
+	if sliceVal.Kind() != reflect.Slice {
+		config.Config.Logger.Error(logger.LogMessage{ApplicationPackage: "db", Message: "dest must be a pointer to a slice"})
+		return errorhandler.New(errorhandler.BadRequest, "dest must point to a slice")
+	}
+
+	elemType := sliceVal.Type().Elem()
+	if elemType.Kind() != reflect.Struct {
+		config.Config.Logger.Error(logger.LogMessage{ApplicationPackage: "db", Message: "Slice element type must be struct"})
+		return errorhandler.New(errorhandler.BadRequest, "Slice element type must be struct")
+	}
+
+	rows, err := p.Conn.Query(query, args...)
+	if err != nil {
+		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Query failed: %v\n", Vals: []any{err}})
+		return errorhandler.Wrap(errorhandler.InternalServerError, "Query failed", err)
+	}
+	defer rows.Close()
+
+	columns, err := rows.Columns()
+	if err != nil {
+		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Failed to get colums: %v\n", Vals: []any{err}})
+		return errorhandler.Wrap(errorhandler.InternalServerError, "Failed to get columns", err)
+	}
+
+	for rows.Next() {
+		newElemPtr := reflect.New(elemType)
+		newElem := newElemPtr.Elem()
+
+		values := make([]any, len(columns))
+		for i := range values {
+			var v any
+			values[i] = &v
+		}
+
+		if err := rows.Scan(values...); err != nil {
+			config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Scan failed: %v\n", Vals: []any{err}})
+			return errorhandler.Wrap(errorhandler.InternalServerError, "Scan failed", err)
+		}
+
+		for i, colName := range columns {
+			rawValPtr := values[i].(*any)
+			val := *rawValPtr
+
+			for j := 0; j < elemType.NumField(); j++ {
+				field := elemType.Field(j)
+				tag := field.Tag.Get("db")
+				if tag == "" {
+					tag = strings.ToLower(field.Name)
+				}
+				if strings.EqualFold(tag, colName) {
+					fieldValue := newElem.Field(j)
+					if fieldValue.CanSet() {
+						if err := setFieldValue(fieldValue, val); err != nil {
+							config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Failed to set field %v: %v\n", Vals: []any{field.Name, err}})
+							return errorhandler.Wrap(errorhandler.InternalServerError, "Failed to set field "+field.Name, err)
+						}
+					}
+					break
+				}
+			}
+		}
+
+		sliceVal.Set(reflect.Append(sliceVal, newElem))
+	}
+
+	return nil
+}
+
+func setFieldValue(fieldValue reflect.Value, val any) error {
+	if val == nil {
+		return nil
+	}
+	switch v := val.(type) {
+	case []byte:
+		strVal := string(v)
+		switch fieldValue.Kind() {
+		case reflect.String:
+			fieldValue.SetString(strVal)
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			iv, err := strconv.ParseInt(strVal, 10, 64)
+			if err != nil {
+				return err
+			}
+			fieldValue.SetInt(iv)
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			uv, err := strconv.ParseUint(strVal, 10, 64)
+			if err != nil {
+				return err
+			}
+			fieldValue.SetUint(uv)
+		case reflect.Float32, reflect.Float64:
+			fv, err := strconv.ParseFloat(strVal, 64)
+			if err != nil {
+				return err
+			}
+			fieldValue.SetFloat(fv)
+		case reflect.Bool:
+			bv, err := strconv.ParseBool(strVal)
+			if err != nil {
+				return err
+			}
+			fieldValue.SetBool(bv)
+		default:
+			// Unsupported type; do nothing or return error
+		}
+	case int64:
+		if fieldValue.Kind() >= reflect.Int && fieldValue.Kind() <= reflect.Int64 {
+			fieldValue.SetInt(v)
+		}
+	case float64:
+		if fieldValue.Kind() == reflect.Float32 || fieldValue.Kind() == reflect.Float64 {
+			fieldValue.SetFloat(v)
+		}
+	case bool:
+		if fieldValue.Kind() == reflect.Bool {
+			fieldValue.SetBool(v)
+		}
+	case string:
+		if fieldValue.Kind() == reflect.String {
+			fieldValue.SetString(v)
+		}
+	default:
+		rv := reflect.ValueOf(val)
+		if rv.Type().AssignableTo(fieldValue.Type()) {
+			fieldValue.Set(rv)
+		}
+	}
 	return nil
 }

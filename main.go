@@ -16,9 +16,6 @@ func main() {
 		}
 	} else {
 		config.Config.Logger.Warning(logger.LogMessage{ApplicationPackage: "main", Message: "GUH DIDN'T FIND ANY COMMANDS"})
-		helpList := []string{"_", "help"}
-		if err := cli.Handle(helpList); err != nil {
-			panic(err)
-		}
+		cli.Help()
 	}
 }

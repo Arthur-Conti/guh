@@ -10,12 +10,16 @@ import (
 	"github.com/Arthur-Conti/guh/config"
 	errorhandler "github.com/Arthur-Conti/guh/libs/error_handler"
 	"github.com/Arthur-Conti/guh/libs/log/logger"
+	projectconfig "github.com/Arthur-Conti/guh/libs/project_config"
 )
+
+var noServiceName string = "no_service_name"
 
 func Structure() error {
 	fs := flag.NewFlagSet("structure", flag.ExitOnError)
 	create := fs.Bool("create", false, "Create the project structure")
 	showFirst := fs.Bool("showFirst", false, "Show the structure before creating it")
+	serviceName := fs.String("serviceName", noServiceName, "The name of your service")
 	help := fs.Bool("help", false, "Help with structure command")
 	fs.Parse(os.Args[2:])
 
@@ -23,8 +27,21 @@ func Structure() error {
 		HelpStructure()
 	}
 
+	if *serviceName == noServiceName {
+		return errorhandler.New(errorhandler.BadRequest, "Service name must be passed")
+	}
+
+	cfg, err := projectconfig.Load()
+	if err != nil {
+		return errorhandler.Wrap(errorhandler.InternalServerError, "failed to load project config", err)
+	}
+	cfg.ServiceName = *serviceName
+	if err := projectconfig.Save(cfg); err != nil {
+		return errorhandler.Wrap(errorhandler.InternalServerError, "failed to save project config", err)
+	}
+
 	if *create {
-		return createStructure()
+		return createStructure(*serviceName)
 	}
 	if *showFirst {
 		showStructure()
@@ -32,15 +49,15 @@ func Structure() error {
 		var resp string
 		fmt.Scanln(&resp)
 		if resp != "" && strings.ToLower(resp) != "y" {
-			fmt.Println("❌ Aborted.")
+			config.Config.Logger.Warning(logger.LogMessage{ApplicationPackage: "cli", Message: "Aborted by user"})
 			return nil
 		}
-		return createStructure()
+		return createStructure(*serviceName)
 	}
 	return nil
 }
 
-func createStructure() error {
+func createStructure(serviceName string) error {
 	mainDirList := []string{"cmd", "internal"}
 	if err := createDir(mainDirList, "./"); err != nil {
 		return err
@@ -64,17 +81,55 @@ func createStructure() error {
 	fileMap := map[string]string{
 		"./cmd/main.go": `package main
 
-import "fmt"
+import (
+	"github.com/gin-gonic/gin"
+)
 
 func main() {
-	fmt.Println("Hello from GUH!")
+	server := gin.Default()
+	routes.RouterRegister(server)
+	server.Run(":8080")
 }`,
-		"./.env": `'DB_USER': 'user_test'
+		"./.env": `DB_USER: 'user_test'
 DB_PASS: 'pass_test'
 DB_IP: 'localhost'
 DB_PORT: '5432'
-DB_DATABASE: 'default'
-		`,
+DB_DATABASE: 'default'`,
+		"./Dockerfile": `FROM golang:1.24.4-alpine AS builder
+ENV CGO_ENABLED=0 GOOS=linux GOARCH=amd64
+WORKDIR /app
+RUN apk add --no-cache git
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN go build -o main ./cmd
+
+FROM alpine:latest
+WORKDIR /app
+COPY --from=builder /app/main .
+CMD ["./main"]`,
+		"./internal/infra/http/routes/routes.go": fmt.Sprintf(`package routes
+
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
+
+var serviceName = "%v"
+
+func RouterRegister(server *gin.Engine) {
+
+	server.GET("/health", func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Server Alive"})
+	})
+}
+
+func groupName(name string) string {
+	return serviceName + name
+}`, serviceName),
 	}
 	for filePath, content := range fileMap {
 		if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
@@ -111,7 +166,9 @@ func showStructure() {
 		"│       ├── http/",
 		"│       │   ├── controllers/",
 		"│       │   └── routes/",
+		"│       │   	 └── routes.go",
 		"│       └── repositories/",
+		"├── Dockerfile",
 		"└── .env",
 	}
 
@@ -130,10 +187,11 @@ Usage:
 Flags:
   --create         Creates your initial core structure for your project  
   --showFirst      Shows the structure that is gonna be created before it creates it
+  --serviceName    (Required) The name of your service
 
 Examples:
-  guh structure --create
-  guh structure --showFirst
+  guh structure --create --serviceName=test
+  guh structure --showFirst --serviceName=test
 
 For more information, visit: https://github.com/Arthur-Conti/guh`)
 	os.Exit(0)

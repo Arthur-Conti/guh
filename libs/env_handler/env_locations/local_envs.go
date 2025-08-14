@@ -3,9 +3,7 @@ package envlocations
 import (
 	"os"
 
-	"github.com/Arthur-Conti/guh/config"
 	errorhandler "github.com/Arthur-Conti/guh/libs/error_handler"
-	"github.com/Arthur-Conti/guh/libs/log/logger"
 	"github.com/joho/godotenv"
 )
 
@@ -19,7 +17,6 @@ func NewLocalEnvs(filePath string) *LocalEnvs {
 
 func (le *LocalEnvs) LoadDotEnv() error {
 	if err := godotenv.Load(le.FilePath); err != nil {
-		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "envlocations", Message: "Error loading %v: %v\n", Vals: []any{le.FilePath, err}})
 		return errorhandler.Wrap(errorhandler.InternalServerError, "error loading "+le.FilePath, err)
 	}
 	return nil
@@ -27,9 +24,6 @@ func (le *LocalEnvs) LoadDotEnv() error {
 
 func (le *LocalEnvs) Get(key string) string {
 	val := os.Getenv(key)
-	if val == "" {
-		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "envlocations", Message: "Env key %v not found", Vals: []any{key}})
-	}
 	return val
 }
 

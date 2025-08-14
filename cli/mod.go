@@ -9,16 +9,15 @@ import (
 	"github.com/Arthur-Conti/guh/config"
 	errorhandler "github.com/Arthur-Conti/guh/libs/error_handler"
 	"github.com/Arthur-Conti/guh/libs/log/logger"
+	projectconfig "github.com/Arthur-Conti/guh/libs/project_config"
 )
 
 const noDefaultGithubURL string = "no_default_github_url"
-const noModName string = "no_mod_name"
 
 func Mod() error {
 	fs := flag.NewFlagSet("mod", flag.ExitOnError)
 	github := fs.String("github", noDefaultGithubURL, "URL to sync github")
 	gin := fs.Bool("gin", false, "If true download gin package")
-	modName := fs.String("modName", noModName, "Mod name if not syncing with github")
 	help := fs.Bool("help", false, "Help with mod command")
 	fs.Parse(os.Args[2:])
 
@@ -26,17 +25,33 @@ func Mod() error {
 		HelpMod()
 	}
 
+	cfg, err := projectconfig.Load()
+	if err != nil {
+		return errorhandler.Wrap(errorhandler.InternalServerError, "failed to load project config", err)
+	}
+
 	if *github != noDefaultGithubURL {
 		if err := syncGithub(*github); err != nil {
 			config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error syncing with github: %v\n", Vals: []any{err}})
 			return err
 		}
+		if err := projectconfig.Save(cfg); err != nil {
+			return errorhandler.Wrap(errorhandler.InternalServerError, "failed to save project config", err)
+		}
+		cfg.ModName = *github
 	}
-	if *github == noDefaultGithubURL && *modName != noModName {
-		if err := modConfiguration(*modName); err != nil {
+	if *github == noDefaultGithubURL {
+		if cfg.ServiceName == "" {
+			return errorhandler.New(errorhandler.BadRequest, "Run 'guh mod --github=...'; alternatively set serviceName in .guh.yaml")
+		}
+		if err := modConfiguration(cfg.ServiceName); err != nil {
 			config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error configurating go mod: %v\n", Vals: []any{err}})
 			return err
 		}
+		if err := projectconfig.Save(cfg); err != nil {
+			return errorhandler.Wrap(errorhandler.InternalServerError, "failed to save project config", err)
+		}
+		cfg.ModName = cfg.ServiceName
 	}
 	if *gin {
 		if err := ginDownload(); err != nil {
