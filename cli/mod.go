@@ -27,7 +27,7 @@ func Mod() error {
 
 	cfg, err := projectconfig.Load()
 	if err != nil {
-		return errorhandler.Wrap(errorhandler.InternalServerError, "failed to load project config", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "failed to load project config", err, errorhandler.WithOp("mod"))
 	}
 
 	if *github != noDefaultGithubURL {
@@ -36,20 +36,20 @@ func Mod() error {
 			return err
 		}
 		if err := projectconfig.Save(cfg); err != nil {
-			return errorhandler.Wrap(errorhandler.InternalServerError, "failed to save project config", err)
+			return errorhandler.Wrap(errorhandler.KindInternal, "failed to save project config", err, errorhandler.WithOp("mod"))
 		}
 		cfg.ModName = *github
 	}
 	if *github == noDefaultGithubURL {
 		if cfg.ServiceName == "" {
-			return errorhandler.New(errorhandler.BadRequest, "Run 'guh mod --github=...'; alternatively set serviceName in .guh.yaml")
+			return errorhandler.New(errorhandler.KindInvalidArgument, "Run 'guh mod --github=...'; alternatively set serviceName in .guh.yaml", errorhandler.WithOp("mod"))
 		}
 		if err := modConfiguration(cfg.ServiceName); err != nil {
 			config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error configurating go mod: %v\n", Vals: []any{err}})
 			return err
 		}
 		if err := projectconfig.Save(cfg); err != nil {
-			return errorhandler.Wrap(errorhandler.InternalServerError, "failed to save project config", err)
+			return errorhandler.Wrap(errorhandler.KindInternal, "failed to save project config", err, errorhandler.WithOp("mod"))
 		}
 		cfg.ModName = cfg.ServiceName
 	}
@@ -69,19 +69,19 @@ func syncGithub(url string) error {
 	_, err := cmd.CombinedOutput()
 	if err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error running 'git init' command: %v\n", Vals: []any{err}})
-		return errorhandler.Wrap(errorhandler.InternalServerError, "Error running 'git init' command", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "Error running 'git init' command", err, errorhandler.WithOp("mod.syncGithub"))
 	}
 	cmd = exec.Command("git", "remote", "add", "origin", url)
 	_, err = cmd.CombinedOutput()
 	if err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error running 'git remote add origin %v' command: %v\n", Vals: []any{url, err}})
-		return errorhandler.Wrap(errorhandler.InternalServerError, fmt.Sprintf("Error running 'git remote add origin %v' command", url), err)
+		return errorhandler.Wrap(errorhandler.KindInternal, fmt.Sprintf("Error running 'git remote add origin %v' command", url), err, errorhandler.WithOp("mod.syncGithub"))
 	}
-	cmd = exec.Command("git", "branch", "-M", "main", url)
+	cmd = exec.Command("git", "branch", "-M", "main")
 	_, err = cmd.CombinedOutput()
 	if err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error running 'git branch -M main' command: %v\n", Vals: []any{err}})
-		return errorhandler.Wrap(errorhandler.InternalServerError, "Error running 'git branch -M main' command", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "Error running 'git branch -M main' command", err, errorhandler.WithOp("mod.syncGithub"))
 	}
 	return modConfiguration(url)
 }
@@ -92,25 +92,25 @@ func modConfiguration(modName string) error {
 	_, err := cmd.CombinedOutput()
 	if err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error running 'go mod init %v' command: %v\n", Vals: []any{modName, err}})
-		return errorhandler.Wrap(errorhandler.InternalServerError, fmt.Sprintf("Error running 'go mod init %v' command", modName), err)
+		return errorhandler.Wrap(errorhandler.KindInternal, fmt.Sprintf("Error running 'go mod init %v' command", modName), err, errorhandler.WithOp("mod.modConfiguration"))
 	}
 	cmd = exec.Command("go", "clean", "-modcache")
 	_, err = cmd.CombinedOutput()
 	if err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error running 'go clean -modcache' command: %v\n", Vals: []any{err}})
-		return errorhandler.Wrap(errorhandler.InternalServerError, "Error running 'go clean -modcache' command", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "Error running 'go clean -modcache' command", err, errorhandler.WithOp("mod.modConfiguration"))
 	}
 	cmd = exec.Command("go", "get", "-u", "github.com/Arthur-Conti/guh@v0.1.0")
 	_, err = cmd.CombinedOutput()
 	if err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error running 'go get -u github.com/Arthur-Conti/guh@v0.1.0' command: %v\n", Vals: []any{err}})
-		return errorhandler.Wrap(errorhandler.InternalServerError, "Error running 'go get -u github.com/Arthur-Conti/guh@v0.1.0' command", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "Error running 'go get -u github.com/Arthur-Conti/guh@v0.1.0' command", err, errorhandler.WithOp("mod.modConfiguration"))
 	}
 	cmd = exec.Command("go", "mod", "tidy")
 	_, err = cmd.CombinedOutput()
 	if err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error running 'go mod tidy' command: %v\n", Vals: []any{err}})
-		return errorhandler.Wrap(errorhandler.InternalServerError, "Error running 'go mod tidy' command", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "Error running 'go mod tidy' command", err, errorhandler.WithOp("mod.modConfiguration"))
 	}
 
 	return nil
@@ -122,7 +122,7 @@ func ginDownload() error {
 	_, err := cmd.CombinedOutput()
 	if err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error running 'go get -u github.com/gin-gonic/gin' command: %v\n", Vals: []any{err}})
-		return errorhandler.Wrap(errorhandler.InternalServerError, "Error running 'go get -u github.com/gin-gonic/gin' command", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "Error running 'go get -u github.com/gin-gonic/gin' command", err, errorhandler.WithOp("mod.ginDownload"))
 	}
 	return nil
 }

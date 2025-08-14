@@ -17,7 +17,7 @@ func NewLocalEnvs(filePath string) *LocalEnvs {
 
 func (le *LocalEnvs) LoadDotEnv() error {
 	if err := godotenv.Load(le.FilePath); err != nil {
-		return errorhandler.Wrap(errorhandler.InternalServerError, "error loading "+le.FilePath, err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "error loading "+le.FilePath, err, errorhandler.WithOp("env_locations.LoadDotEnv"), errorhandler.WithFields(map[string]any{"filePath": le.FilePath}))
 	}
 	return nil
 }

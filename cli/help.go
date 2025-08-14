@@ -13,6 +13,8 @@ Usage:
 
 Available Commands:
   help               Show this help message
+  init               Initialize your project with the necessary files and configurations
+  api                Configure the API files to start your project
   compose            Create a docker-compose.yml file with the services you might need in your project (Databases, service, etc...)
   config             Create the config files for your project (logger, databases, init, etc...)
   mod                Help you start your project go mod, connect to github, create your go mod file and download GUH packages

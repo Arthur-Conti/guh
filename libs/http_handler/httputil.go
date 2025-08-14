@@ -28,7 +28,7 @@ func (hh *HttpHandler) Request(method, url string, body, result any) error {
 		b, err := json.Marshal(body)
 		if err != nil {
 			config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "httphandler", Message: "Error marshalling body: %v\n", Vals: []any{err}})
-			return errorhandler.Wrap(errorhandler.InternalServerError, "Error marshalling body", err)
+			return errorhandler.Wrap(errorhandler.KindInternal, "Error marshalling body", err, errorhandler.WithOp("httphandler.Request"), errorhandler.WithFields(map[string]any{"method": method, "url": url, "body": body}))
 		}
 		bodyReader = bytes.NewBuffer(b)
 	}
@@ -36,27 +36,27 @@ func (hh *HttpHandler) Request(method, url string, body, result any) error {
 	req, err := http.NewRequest(method, url, bodyReader)
 	if err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "httphandler", Message: "Error creating request: %v\n", Vals: []any{err}})
-		return errorhandler.Wrap(errorhandler.InternalServerError, "Error creating request", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "Error creating request", err, errorhandler.WithOp("httphandler.Request"), errorhandler.WithFields(map[string]any{"method": method, "url": url, "body": body}))
 	}
 
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := hh.client.Do(req)
 	if err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "httphandler", Message: "Error sending get message to '%v': %v\n", Vals: []any{url, err}})
-		return errorhandler.Wrap(errorhandler.ErrorType(resp.Status), "Error sending get message to "+url, err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "Error sending get message to "+url, err, errorhandler.WithOp("httphandler.Request"), errorhandler.WithFields(map[string]any{"method": method, "url": url, "body": body}))
 	}
 	defer resp.Body.Close()
 	
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		b, _ := io.ReadAll(resp.Body)
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "httphandler", Message: "HTTP %d: %s", Vals: []any{resp.StatusCode, string(b)}})
-		return errorhandler.New(errorhandler.ErrorType(resp.Status), fmt.Sprintf("HTTP %d: %s", resp.StatusCode, string(b)))
+		return errorhandler.New(errorhandler.KindInternal, fmt.Sprintf("HTTP %d: %s", resp.StatusCode, string(b)), errorhandler.WithOp("httphandler.Request"), errorhandler.WithFields(map[string]any{"method": method, "url": url, "body": body}))
 	}
 
 	if resp != nil {
 		if err := json.NewDecoder(resp.Body).Decode(result); err != nil {
-			config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "heephandler", Message: "Error deconding body: %v\n", Vals: []any{err}})
-			return errorhandler.Wrap(errorhandler.ErrorType(resp.Status), "Error decoding body", err)
+			config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "httphandler", Message: "Error deconding body: %v\n", Vals: []any{err}})
+			return errorhandler.Wrap(errorhandler.KindInternal, "Error decoding body", err, errorhandler.WithOp("httphandler.Request"), errorhandler.WithFields(map[string]any{"method": method, "url": url, "body": body}))
 		}
 	}
 	return nil

@@ -28,20 +28,20 @@ func Structure() error {
 	}
 
 	if *serviceName == noServiceName {
-		return errorhandler.New(errorhandler.BadRequest, "Service name must be passed")
+		return errorhandler.New(errorhandler.KindInvalidArgument, "Service name must be passed", errorhandler.WithOp("structure"))
 	}
 
 	cfg, err := projectconfig.Load()
 	if err != nil {
-		return errorhandler.Wrap(errorhandler.InternalServerError, "failed to load project config", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "failed to load project config", err, errorhandler.WithOp("structure"))
 	}
 	cfg.ServiceName = *serviceName
 	if err := projectconfig.Save(cfg); err != nil {
-		return errorhandler.Wrap(errorhandler.InternalServerError, "failed to save project config", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "failed to save project config", err, errorhandler.WithOp("structure"))
 	}
 
 	if *create {
-		return createStructure(*serviceName)
+		return createStructure(*serviceName, "")
 	}
 	if *showFirst {
 		showStructure()
@@ -52,12 +52,12 @@ func Structure() error {
 			config.Config.Logger.Warning(logger.LogMessage{ApplicationPackage: "cli", Message: "Aborted by user"})
 			return nil
 		}
-		return createStructure(*serviceName)
+		return createStructure(*serviceName, "")
 	}
 	return nil
 }
 
-func createStructure(serviceName string) error {
+func createStructure(serviceName string, modName string) error {
 	mainDirList := []string{"cmd", "internal"}
 	if err := createDir(mainDirList, "./"); err != nil {
 		return err
@@ -79,9 +79,10 @@ func createStructure(serviceName string) error {
 		return err
 	}
 	fileMap := map[string]string{
-		"./cmd/main.go": `package main
+		"./cmd/main.go": fmt.Sprintf(`package main
 
 import (
+	"%v/internal/infra/http/routes"
 	"github.com/gin-gonic/gin"
 )
 
@@ -89,7 +90,7 @@ func main() {
 	server := gin.Default()
 	routes.RouterRegister(server)
 	server.Run(":8080")
-}`,
+}`, modName),
 		"./.env": `DB_USER: 'user_test'
 DB_PASS: 'pass_test'
 DB_IP: 'localhost'
@@ -134,7 +135,7 @@ func groupName(name string) string {
 	for filePath, content := range fileMap {
 		if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
 			config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error creating file %v: %v\n", Vals: []any{filePath, err}})
-			return errorhandler.Wrap(errorhandler.InternalServerError, "error creating file "+filePath, err)
+			return errorhandler.Wrap(errorhandler.KindInternal, "error creating file "+filePath, err, errorhandler.WithOp("structure.createStructure"))
 		}
 	}
 	return nil
@@ -144,7 +145,7 @@ func createDir(dirList []string, pathToCreate string) error {
 	for _, dir := range dirList {
 		if err := os.MkdirAll(filepath.Join(pathToCreate, dir), 0755); err != nil {
 			config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error creating dir %v: %v\n", Vals: []any{dir, err}})
-			return errorhandler.Wrap(errorhandler.InternalServerError, "error creating dir "+dir, err)
+			return errorhandler.Wrap(errorhandler.KindInternal, "error creating dir "+dir, err, errorhandler.WithOp("structure.createDir"))
 		}
 	}
 

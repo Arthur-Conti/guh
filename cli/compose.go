@@ -37,10 +37,10 @@ func Compose() error {
 	if *addService {
 		cfg, err := projectconfig.Load()
 		if err != nil {
-			return errorhandler.Wrap(errorhandler.InternalServerError, "failed to load project config", err)
+			return errorhandler.Wrap(errorhandler.KindInternal, "failed to load project config", err, errorhandler.WithOp("compose"))
 		}
 		if cfg.ServiceName == "" {
-			return errorhandler.New(errorhandler.BadRequest, "To add the service to the compose you must provide a service name (run 'guh structure --serviceName=...' first)")
+			return errorhandler.New(errorhandler.KindInvalidArgument, "To add the service to the compose you must provide a service name (run 'guh structure --serviceName=...' first)", errorhandler.WithOp("compose"))
 		}
 		if err := AddAppService("docker-compose.yml", cfg.ServiceName); err != nil {
 			config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error adding service to docker compose: %v\n", Vals: []any{err}})
@@ -92,7 +92,7 @@ volumes:
 	err := os.WriteFile("./"+fileName, []byte(content), 0644)
 	if err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Error writing file: %v\n", Vals: []any{err}})
-		return errorhandler.Wrap(errorhandler.InternalServerError, "error writing file", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "error writing file", err, errorhandler.WithOp("compose.PostgresDockerCompose"))
 	}
 
 	config.Config.Logger.Info(logger.LogMessage{ApplicationPackage: "db", Message: "docker-compose.yml generated successfully."})
@@ -151,7 +151,7 @@ func RunCompose() error {
 	config.Config.Logger.Info(logger.LogMessage{ApplicationPackage: "cli", Message: "Running docker-compose up -d..."})
 	if err := cmd.Run(); err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error running docker-compose: %v\n", Vals: []any{err}})
-		return errorhandler.Wrap(errorhandler.InternalServerError, "Error running docker-compose", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "Error running docker-compose", err, errorhandler.WithOp("compose.RunCompose"))
 	}
 	config.Config.Logger.Info(logger.LogMessage{ApplicationPackage: "cli", Message: "Docker Compose started successfully."})
 	return nil

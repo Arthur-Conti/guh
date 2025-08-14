@@ -67,7 +67,7 @@ func (p *Postgres) Connect() error {
 func (p *Postgres) Close() error {
 	if err := p.Conn.Close(); err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Error closing db: %v\n", Vals: []any{err}})
-		return errorhandler.Wrap(errorhandler.InternalServerError, "Error closing db", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "Error closing db", err, errorhandler.WithOp("db.Close"))
 	}
 	return nil
 }
@@ -80,12 +80,12 @@ func (p *Postgres) init() error {
 	conn, err := sql.Open("postgres", p.uri())
 	if err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Unable to connect to database: %v\n", Vals: []any{err}})
-		return errorhandler.Wrap("InternalServerError", "unable to connect to database", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "unable to connect to database", err, errorhandler.WithOp("db.init"))
 	}
 	err = conn.Ping()
 	if err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Ping failed: %v\n", Vals: []any{err}})
-		return errorhandler.Wrap("ServiceUnavailable", "ping failed", err)
+		return errorhandler.Wrap(errorhandler.KindUnavailable, "ping failed", err, errorhandler.WithOp("db.init"))
 	}
 	config.Config.Logger.Info(logger.LogMessage{ApplicationPackage: "db", Message: "Connected to PostgreSQL successfully!"})
 	p.Conn = conn
@@ -96,7 +96,7 @@ func (p *Postgres) CreateTable(sql string) error {
 	_, err := p.Conn.Query(sql)
 	if err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Error creating table: %v\n", Vals: []any{err}})
-		return errorhandler.Wrap(errorhandler.InternalServerError, "Error creating table", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "Error creating table", err, errorhandler.WithOp("db.CreateTable"), errorhandler.WithFields(map[string]any{"sql": sql}))
 	}
 	return nil
 }
@@ -105,25 +105,25 @@ func (p *Postgres) QueryRow(dest any, query string, args ...any) error {
 	v := reflect.ValueOf(dest)
 	if v.Kind() != reflect.Ptr || v.Elem().Kind() != reflect.Struct {
 		config.Config.Logger.Error(logger.LogMessage{ApplicationPackage: "db", Message: "dest must be a pointer to a struct"})
-		return errorhandler.New(errorhandler.BadRequest, "dest must be a pointer to a struct")
+		return errorhandler.New(errorhandler.KindInvalidArgument, "dest must be a pointer to a struct", errorhandler.WithOp("db.QueryRow"))
 	}
 
 	rows, err := p.Conn.Query(query, args...)
 	if err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Query failed: %s\n", Vals: []any{err}})
-		return errorhandler.Wrap(errorhandler.InternalServerError, "Query failed", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "Query failed", err, errorhandler.WithOp("db.QueryRow"), errorhandler.WithFields(map[string]any{"query": query, "args": args}))
 	}
 	defer rows.Close()
 
 	if !rows.Next() {
 		config.Config.Logger.Error(logger.LogMessage{ApplicationPackage: "db", Message: "Error no rows"})
-		return errorhandler.New(errorhandler.InternalServerError, "error no rows")
+		return errorhandler.New(errorhandler.KindNotFound, "error no rows", errorhandler.WithOp("db.QueryRow"))
 	}
 
 	columns, err := rows.Columns()
 	if err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Failed to get columns: %v\n", Vals: []any{err}})
-		return errorhandler.Wrap(errorhandler.InternalServerError, "Failed to get columns", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "Failed to get columns", err, errorhandler.WithOp("db.QueryRow"), errorhandler.WithFields(map[string]any{"query": query, "args": args}))
 	}
 
 	values := make([]any, len(columns))
@@ -134,7 +134,7 @@ func (p *Postgres) QueryRow(dest any, query string, args ...any) error {
 
 	if err := rows.Scan(valuePtrs...); err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Failed to scan row: %v\n", Vals: []any{err}})
-		return errorhandler.Wrap(errorhandler.InternalServerError, "Failed to scan row", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "Failed to scan row", err, errorhandler.WithOp("db.QueryRow"), errorhandler.WithFields(map[string]any{"query": query, "args": args}))
 	}
 
 	structValue := v.Elem()
@@ -154,7 +154,7 @@ func (p *Postgres) QueryRow(dest any, query string, args ...any) error {
 					err := setFieldValue(fieldValue, values[i])
 					if err != nil {
 						config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Error setting field: %v\n", Vals: []any{err}})
-						return errorhandler.Wrap(errorhandler.InternalServerError, "Error setting field", err)
+						return errorhandler.Wrap(errorhandler.KindInternal, "Error setting field", err, errorhandler.WithOp("db.QueryRow"), errorhandler.WithFields(map[string]any{"query": query, "args": args}))
 					}
 				}
 				break
@@ -169,31 +169,31 @@ func (p *Postgres) Query(dest any, query string, args ...any) error {
 	ptrVal := reflect.ValueOf(dest)
 	if ptrVal.Kind() != reflect.Ptr {
 		config.Config.Logger.Error(logger.LogMessage{ApplicationPackage: "db", Message: "dest must be a pointer to a slice"})
-		return errorhandler.New(errorhandler.BadRequest, "dest must be a pointer to a slice")
+		return errorhandler.New(errorhandler.KindInvalidArgument, "dest must be a pointer to a slice", errorhandler.WithOp("db.Query"))
 	}
 	sliceVal := ptrVal.Elem()
 	if sliceVal.Kind() != reflect.Slice {
 		config.Config.Logger.Error(logger.LogMessage{ApplicationPackage: "db", Message: "dest must be a pointer to a slice"})
-		return errorhandler.New(errorhandler.BadRequest, "dest must point to a slice")
+		return errorhandler.New(errorhandler.KindInvalidArgument, "dest must point to a slice", errorhandler.WithOp("db.Query"))
 	}
 
 	elemType := sliceVal.Type().Elem()
 	if elemType.Kind() != reflect.Struct {
 		config.Config.Logger.Error(logger.LogMessage{ApplicationPackage: "db", Message: "Slice element type must be struct"})
-		return errorhandler.New(errorhandler.BadRequest, "Slice element type must be struct")
+		return errorhandler.New(errorhandler.KindInvalidArgument, "Slice element type must be struct", errorhandler.WithOp("db.Query"))
 	}
 
 	rows, err := p.Conn.Query(query, args...)
 	if err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Query failed: %v\n", Vals: []any{err}})
-		return errorhandler.Wrap(errorhandler.InternalServerError, "Query failed", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "Query failed", err, errorhandler.WithOp("db.Query"), errorhandler.WithFields(map[string]any{"query": query, "args": args}))
 	}
 	defer rows.Close()
 
 	columns, err := rows.Columns()
 	if err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Failed to get colums: %v\n", Vals: []any{err}})
-		return errorhandler.Wrap(errorhandler.InternalServerError, "Failed to get columns", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "Failed to get columns", err, errorhandler.WithOp("db.Query"), errorhandler.WithFields(map[string]any{"query": query, "args": args}))
 	}
 
 	for rows.Next() {
@@ -208,7 +208,7 @@ func (p *Postgres) Query(dest any, query string, args ...any) error {
 
 		if err := rows.Scan(values...); err != nil {
 			config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Scan failed: %v\n", Vals: []any{err}})
-			return errorhandler.Wrap(errorhandler.InternalServerError, "Scan failed", err)
+			return errorhandler.Wrap(errorhandler.KindInternal, "Scan failed", err, errorhandler.WithOp("db.Query"), errorhandler.WithFields(map[string]any{"query": query, "args": args}))
 		}
 
 		for i, colName := range columns {
@@ -226,7 +226,7 @@ func (p *Postgres) Query(dest any, query string, args ...any) error {
 					if fieldValue.CanSet() {
 						if err := setFieldValue(fieldValue, val); err != nil {
 							config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Failed to set field %v: %v\n", Vals: []any{field.Name, err}})
-							return errorhandler.Wrap(errorhandler.InternalServerError, "Failed to set field "+field.Name, err)
+							return errorhandler.Wrap(errorhandler.KindInternal, "Failed to set field "+field.Name, err, errorhandler.WithOp("db.Query"), errorhandler.WithFields(map[string]any{"query": query, "args": args}))
 						}
 					}
 					break

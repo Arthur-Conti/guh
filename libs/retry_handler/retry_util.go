@@ -29,7 +29,7 @@ func (rh *RetryHandler) Do(function func() error, opts RetryOpts, df bool) error
 		maxAttempts = opts.MaxAttempts
 		backoff = opts.Backoff
 	}
-	err := errorhandler.New(errorhandler.BadGateway, "starting error") 
+	err := errorhandler.New(errorhandler.KindInternal, "starting error", errorhandler.WithOp("retry_handler.Do")) 
 	var count int
 	for err != nil && count < maxAttempts {
 		err = function()

@@ -2,6 +2,8 @@ package cli
 
 func Handle(args []string) error {
 	switch args[1] {
+	case "init":
+		return Init()
 	case "compose":
 		return Compose()
 	case "config":

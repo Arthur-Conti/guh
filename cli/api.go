@@ -26,7 +26,7 @@ func Api() error {
 	fs.Parse(os.Args[2:])
 
 	if *serve && *kill {
-		return errorhandler.New(errorhandler.Conflict, "You cant kill and serve at the same time")
+		return errorhandler.New(errorhandler.KindInvalidArgument, "You cant kill and serve at the same time", errorhandler.WithOp("api"))
 	}
 
 	if *help {
@@ -57,7 +57,7 @@ func serveApi(background bool) error {
 		cmd := exec.Command("docker", "compose", "up", "--build", "-d")
 		if _, err := cmd.CombinedOutput(); err != nil {
 			config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "api", Message: "Error serving your application: %v\n", Vals: []any{err}})
-			return errorhandler.Wrap(errorhandler.InternalServerError, "Error serving your application", err)
+			return errorhandler.Wrap(errorhandler.KindInternal, "Error serving your application", err, errorhandler.WithOp("api.serveApi"))
 		}
 		return nil
 	}
@@ -68,7 +68,7 @@ func serveApi(background bool) error {
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "api", Message: "Error serving your application: %v\n", Vals: []any{err}})
-		return errorhandler.Wrap(errorhandler.InternalServerError, "Error serving your application", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "Error serving your application", err, errorhandler.WithOp("api.serveApi"))
 	}
 	return nil
 }
@@ -78,7 +78,7 @@ func killAPI() error {
 	_, err := cmd.CombinedOutput()
 	if err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "api", Message: "Error serving your application: %v\n", Vals: []any{err}})
-		return errorhandler.Wrap(errorhandler.InternalServerError, "Error serving your application", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "Error serving your application", err, errorhandler.WithOp("api.killAPI"))
 	}
 	return nil
 }
@@ -88,7 +88,7 @@ func getRequest(request string) error {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "api", Message: "Error sending request to the application: %v\n", Vals: []any{err}})
-		return errorhandler.Wrap(errorhandler.InternalServerError, "Error sending request to the application", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "Error sending request to the application", err, errorhandler.WithOp("api.getRequest"))
 	}
 	fmt.Println(string(output))
 	return nil
@@ -99,7 +99,7 @@ func addRoute(route string) error {
 	raw := strings.TrimSpace(route)
 	raw = strings.TrimPrefix(raw, "/")
 	if raw == "" {
-		return errorhandler.New(errorhandler.BadRequest, "invalid route name")
+		return errorhandler.New(errorhandler.KindInvalidArgument, "invalid route name", errorhandler.WithOp("api.addRoute"))
 	}
 
 	// Keep user casing for identifier; strip invalid chars and ensure valid Go ident
@@ -150,7 +150,7 @@ func addRoute(route string) error {
 
 	ident := toIdent(raw)
 	if ident == "" {
-		return errorhandler.New(errorhandler.BadRequest, "invalid route name")
+		return errorhandler.New(errorhandler.KindInvalidArgument, "invalid route name", errorhandler.WithOp("api.addRoute"))
 	}
 	slug := toSnake(raw)
 
@@ -159,7 +159,7 @@ func addRoute(route string) error {
 	if _, err := os.Stat(routeFilePath); os.IsNotExist(err) {
 		routesFile, err := os.Create(routeFilePath)
 		if err != nil {
-			return errorhandler.Wrap(errorhandler.InternalServerError, "Error creating routes file", err)
+			return errorhandler.Wrap(errorhandler.KindInternal, "Error creating routes file", err, errorhandler.WithOp("api.addRoute"))
 		}
 		defer routesFile.Close()
 		if _, err := routesFile.WriteString(fmt.Sprintf(`package routes
@@ -172,7 +172,7 @@ func %sRoutes(group *gin.RouterGroup) {
 
 }
 `, ident)); err != nil {
-			return errorhandler.Wrap(errorhandler.InternalServerError, "Error writing routes file", err)
+			return errorhandler.Wrap(errorhandler.KindInternal, "Error writing routes file", err, errorhandler.WithOp("api.addRoute"))
 		}
 	}
 
@@ -180,7 +180,7 @@ func %sRoutes(group *gin.RouterGroup) {
 	mainRoutesPath := "./internal/infra/http/routes/routes.go"
 	contentBytes, err := os.ReadFile(mainRoutesPath)
 	if err != nil {
-		return errorhandler.Wrap(errorhandler.InternalServerError, "Error reading routes.go", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "Error reading routes.go", err, errorhandler.WithOp("api.addRoute"))
 	}
 	content := string(contentBytes)
 
@@ -195,11 +195,11 @@ func %sRoutes(group *gin.RouterGroup) {
 	// Find closing brace of RouterRegister and insert before it
 	funcStart := strings.Index(content, "func RouterRegister(")
 	if funcStart == -1 {
-		return errorhandler.New(errorhandler.InternalServerError, "Could not find RouterRegister in routes.go")
+		return errorhandler.New(errorhandler.KindInternal, "Could not find RouterRegister in routes.go", errorhandler.WithOp("api.addRoute"))
 	}
 	braceOpen := strings.Index(content[funcStart:], "{")
 	if braceOpen == -1 {
-		return errorhandler.New(errorhandler.InternalServerError, "Malformed RouterRegister: missing '{'")
+		return errorhandler.New(errorhandler.KindInternal, "Malformed RouterRegister: missing '{'", errorhandler.WithOp("api.addRoute"))
 	}
 	openIdx := funcStart + braceOpen
 	depth := 0
@@ -218,12 +218,12 @@ scanLoop:
 		}
 	}
 	if closeIdx == -1 {
-		return errorhandler.New(errorhandler.InternalServerError, "Malformed RouterRegister: missing '}'")
+		return errorhandler.New(errorhandler.KindInternal, "Malformed RouterRegister: missing '}'", errorhandler.WithOp("api.addRoute"))
 	}
 
 	newContent := content[:closeIdx] + insertBlock + content[closeIdx:]
 	if err := os.WriteFile(mainRoutesPath, []byte(newContent), 0644); err != nil {
-		return errorhandler.Wrap(errorhandler.InternalServerError, "Error updating routes.go", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "Error updating routes.go", err, errorhandler.WithOp("api.addRoute"))
 	}
 
 	config.Config.Logger.Infof(logger.LogMessage{ApplicationPackage: "api", Message: "Added route: %v (%v)", Vals: []any{ident, slug}})

@@ -10,15 +10,24 @@ import (
 	"github.com/Arthur-Conti/guh/libs/log/logger"
 )
 
-var filePath string
+var filePath *string
+
+// Use a safe default path that can be overridden by flags
+var configFilePath string = "./internal/config/"
 
 func Config() error {
 	fs := flag.NewFlagSet("config", flag.ExitOnError)
-	filePath = *fs.String("filePath", "./internal/config/", "The path where the file should go")
+	// Local flag var; we will copy it to the global string after parsing
+	filePath = fs.String("filePath", configFilePath, "The path where the file should go")
 	all := fs.Bool("all", false, "Create all configs")
 	logger := fs.Bool("logger", false, "Create logger config")
 	help := fs.Bool("help", false, "Help with config command")
 	fs.Parse(os.Args[2:])
+
+	// Ensure global path is always set, even when other commands call these funcs directly
+	if filePath != nil {
+		configFilePath = *filePath
+	}
 
 	if *help {
 		HelpConfig()
@@ -64,7 +73,7 @@ func Init() {
 	Config.Logger = InitLogger()
 }`
 
-	return createFiles(filePath+fileName, content)
+	return createFiles(configFilePath+fileName, content)
 }
 
 func LoggerConfig() error {
@@ -95,7 +104,7 @@ func InitLogger() *logger.Logger {
 	return logger.NewLogger(loggerOpts)
 }`
 
-	return createFiles(filePath+fileName, content)
+	return createFiles(configFilePath+fileName, content)
 }
 
 func createFiles(filePath, content string) error {
@@ -104,12 +113,12 @@ func createFiles(filePath, content string) error {
 		return nil
 	} else if !os.IsNotExist(err) {
 		config.Config.Logger.Infof(logger.LogMessage{ApplicationPackage: "cli", Message: "Error checking file: %v\n", Vals: []any{err}})
-		return errorhandler.Wrap(errorhandler.InternalServerError, "Error checking file", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "Error checking file", err, errorhandler.WithOp("cli.createFiles"))
 	}
 
 	if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "cli", Message: "Error writing file: %v\n", Vals: []any{err}})
-		return errorhandler.Wrap(errorhandler.InternalServerError, "Error writing file", err)
+		return errorhandler.Wrap(errorhandler.KindInternal, "Error writing file", err, errorhandler.WithOp("cli.createFiles"))
 	}
 	config.Config.Logger.Infof(logger.LogMessage{ApplicationPackage: "cli", Message: "%v generated successfully.", Vals: []any{filePath}})
 
