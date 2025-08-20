@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	errorhandler "github.com/Arthur-Conti/guh/libs/error_handler"
-	fl "github.com/Arthur-Conti/guh/libs/fast_logger"
 )
 
 type HttpHandler struct {
