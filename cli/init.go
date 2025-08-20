@@ -61,6 +61,7 @@ func Init() error {
 		return errorhandler.Wrap(errorhandler.KindInternal, "failed to load project config", err, errorhandler.WithOp("init"))
 	}
 	cfg.ServiceName = *serviceName
+	cfg.ModName = modName
 	if err := projectconfig.Save(cfg); err != nil {
 		return errorhandler.Wrap(errorhandler.KindInternal, "failed to save project config", err, errorhandler.WithOp("init"))
 	}

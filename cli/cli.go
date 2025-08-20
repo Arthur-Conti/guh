@@ -4,6 +4,8 @@ func Handle(args []string) error {
 	switch args[1] {
 	case "init":
 		return Init()
+	case "db":
+		return Db()
 	case "compose":
 		return Compose()
 	case "config":

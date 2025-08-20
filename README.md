@@ -4,6 +4,7 @@ Go Universal Helper (GUH) is a CLI and a collection of Go packages that help you
 
 ### Highlights
 - **CLI tools**: `init`, `structure`, `mod`, `compose`, `config`, `api`, `help`, `-v`
+- **CLI tools**: `init`, `structure`, `mod`, `compose`, `config`, `api`, `db`, `help`, `-v`
 - **Batteries included**: Dockerfile, Docker Compose for Postgres, `.env` conventions, Gin-friendly HTTP scaffolding
 - **Libraries**: logging, env loader, Postgres DB wrapper, retry/timer utilities, HTTP helpers, project config
 
@@ -203,6 +204,44 @@ guh -v
 ```
 
 ### init — bootstrap everything quickly
+### db — database migrations and seeds (Postgres)
+Manages SQL file-based migrations and seeds. Defaults:
+- Migrations: `./internal/infra/db/migrations`
+- Seeds: `./internal/infra/db/seeds`
+
+Flags:
+- `--dir` (string, default: `./internal/infra/db/migrations`): directory for migration files
+- `--init` (bool): create the migrations directory and `schema_migrations` table
+- `--new` (string): create a new migration pair `<timestamp>_<name>.up.sql` and `.down.sql`
+- `--up` (bool): apply all pending migrations in order
+- `--down` (bool): revert the last N migrations (use `--steps`)
+- `--steps` (int, default: 1): number of steps for `--down`
+- `--status` (bool): show migration status (applied vs pending)
+- `--seedDir` (string, default: `./internal/infra/db/seeds`): directory for seeds
+- `--initSeeds` (bool): create seeds directory and `schema_seeds` table
+- `--newSeed` (string): create a new seed file `<name>.sql`
+- `--seed` (bool): apply all pending seeds
+- `--seedStatus` (bool): show seed status
+
+Examples:
+```bash
+guh db --init
+guh db --new=create_users_table
+guh db --up
+guh db --down --steps=1
+guh db --status
+guh db --initSeeds
+guh db --newSeed=seed_users
+guh db --seed
+guh db --seedStatus
+```
+
+Notes:
+- Uses `.env` (`DB_USER`, `DB_PASS`, `DB_IP`, `DB_PORT`, `DB_DATABASE`) via `libs/db` conventions.
+- Creates and reads `schema_migrations` to track applied versions.
+- File naming format: `<YYYYMMDDHHMMSS>_<snake_case_name>.up.sql|.down.sql`.
+- Seeds use `schema_seeds` (`name`, `applied_at`) and run in lexical order once.
+
 Run a one-shot project bootstrap that creates structure, initializes `go.mod`, prepares Docker Compose (Postgres + app service), and generates configs.
 
 Flags:

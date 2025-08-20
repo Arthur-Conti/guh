@@ -19,6 +19,7 @@ Available Commands:
   config             Create the config files for your project (logger, databases, init, etc...)
   mod                Help you start your project go mod, connect to github, create your go mod file and download GUH packages
   structure          Create the core structure to start your project
+  db                 Manage database migrations (init, new, up, down, status)
   -v                 Shows the GUH version
 
 Flags:
