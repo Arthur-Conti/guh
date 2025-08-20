@@ -11,7 +11,7 @@ import (
 type Worker[T any] struct {
 	ID       uuid.UUID
 	channel  chan any
-	response T
+	Response T
 }
 
 func NewWorker[T any](id uuid.UUID) *Worker[T] {
@@ -25,15 +25,10 @@ func (w *Worker[T]) Do(function func()) {
 	go function()
 }
 
-func (w *Worker[T]) DoAndNotify(function func() error, url string) {
+func (w *Worker[T]) DoAndNotify(function func() T, url string) {
 	go func() {
-		err := function()
-		if err != nil {
-			httphandler.NewHttpHandler().Request("POST", url, map[string]any{
-				"error": err.Error(),
-			}, nil)
-		}
-		httphandler.NewHttpHandler().Request("POST", url, w.response, nil)
+		w.Response = function()
+		httphandler.NewHttpHandler().Request("POST", url, w.Response, nil)
 	}()
 }
 

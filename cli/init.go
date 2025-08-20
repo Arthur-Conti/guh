@@ -16,6 +16,7 @@ import (
 func Init() error {
 	fs := flag.NewFlagSet("init", flag.ExitOnError)
 	serviceName := fs.String("serviceName", "", "The name of the service")
+	baseUrl := fs.String("baseUrl", "http://localhost:8080", "The base url of the service")
 	dbName := fs.String("dbName", "postgres", "The name of the database")
 	github := fs.String("github", "", "The github url to init your go mod")
 	gin := fs.Bool("gin", false, "Download the gin package")
@@ -62,6 +63,7 @@ func Init() error {
 	}
 	cfg.ServiceName = *serviceName
 	cfg.ModName = modName
+	cfg.BaseUrl = *baseUrl + "/" + *serviceName
 	if err := projectconfig.Save(cfg); err != nil {
 		return errorhandler.Wrap(errorhandler.KindInternal, "failed to save project config", err, errorhandler.WithOp("init"))
 	}
@@ -92,13 +94,12 @@ func Init() error {
 			return errorhandler.Wrap(errorhandler.KindInternal, "failed to configure go mod", err, errorhandler.WithOp("init"))
 		}
 	}
-	
+
 	if *gin {
 		if err := ginDownload(); err != nil {
 			return errorhandler.Wrap(errorhandler.KindInternal, "failed to download gin", err, errorhandler.WithOp("init"))
 		}
 	}
-
 
 	return nil
 }

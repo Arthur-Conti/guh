@@ -11,9 +11,8 @@ import (
 	"github.com/Arthur-Conti/guh/config"
 	errorhandler "github.com/Arthur-Conti/guh/libs/error_handler"
 	"github.com/Arthur-Conti/guh/libs/log/logger"
+	projectconfig "github.com/Arthur-Conti/guh/libs/project_config"
 )
-
-var baseUrl = "http://localhost:8080"
 
 func Api() error {
 	fs := flag.NewFlagSet("api", flag.ExitOnError)
@@ -84,7 +83,11 @@ func killAPI() error {
 }
 
 func getRequest(request string) error {
-	cmd := exec.Command("curl", "-s", baseUrl+request)
+	pc, err := projectconfig.Load()
+	if err != nil {
+		return errorhandler.Wrap(errorhandler.KindInternal, "Error loading project config", err, errorhandler.WithOp("api.getRequest"))
+	}
+	cmd := exec.Command("curl", "-s", pc.BaseUrl+request)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "api", Message: "Error sending request to the application: %v\n", Vals: []any{err}})

@@ -12,6 +12,7 @@ const configFilePath string = ".guh.yaml"
 type ProjectConfig struct {
 	ServiceName string `yaml:"serviceName"`
 	ModName     string `yaml:"modName"`
+	BaseUrl     string `yaml:"baseUrl"`
 }
 
 func Load() (*ProjectConfig, error) {
