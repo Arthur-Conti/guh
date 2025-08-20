@@ -47,12 +47,12 @@ func (hh *HttpHandler) Request(method, url string, body, result any) error {
 		return errorhandler.New(errorhandler.KindInternal, fmt.Sprintf("HTTP %d: %s", resp.StatusCode, string(b)), errorhandler.WithOp("httphandler.Request"), errorhandler.WithFields(map[string]any{"method": method, "url": url, "body": body}))
 	}
 
-	if result != nil {
-		return nil
-	}
-
+	
 	if resp.Body != nil {
 		if err := json.NewDecoder(resp.Body).Decode(result); err != nil {
+			if result != nil {
+				return nil
+			}
 			return errorhandler.Wrap(errorhandler.KindInternal, "Error decoding body", err, errorhandler.WithOp("httphandler.Request"), errorhandler.WithFields(map[string]any{"method": method, "url": url, "body": body}))
 		}
 	}
