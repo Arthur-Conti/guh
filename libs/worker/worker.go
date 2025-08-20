@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	fl "github.com/Arthur-Conti/guh/libs/fast_logger"
 	httphandler "github.com/Arthur-Conti/guh/libs/http_handler"
 	"github.com/google/uuid"
 )
@@ -25,10 +26,18 @@ func (w *Worker[T]) Do(function func()) {
 	go function()
 }
 
-func (w *Worker[T]) DoAndNotify(function func() T, url string) {
+func (w *Worker[T]) DoAndNotify(function func() (T, error), url string) {
 	go func() {
-		w.Response = function()
-		httphandler.NewHttpHandler().Request("POST", url, w.Response, nil)
+		response, err := function()
+		if err != nil {
+			httphandler.NewHttpHandler().Request("POST", url, map[string]any{
+				"error": err.Error(),
+			}, nil)
+		}
+		err = httphandler.NewHttpHandler().Request("POST", url, response, nil)
+		if err != nil {
+			fl.Logf("Error sending response to %s: %v", url, err)
+		}
 	}()
 }
 
