@@ -8,11 +8,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Arthur-Conti/guh/config"
 	envhandler "github.com/Arthur-Conti/guh/libs/env_handler"
 	envlocations "github.com/Arthur-Conti/guh/libs/env_handler/env_locations"
 	errorhandler "github.com/Arthur-Conti/guh/libs/error_handler"
-	"github.com/Arthur-Conti/guh/libs/log/logger"
 	_ "github.com/lib/pq"
 )
 
@@ -33,7 +31,6 @@ type Postgres struct {
 func GetDefaultPostgresOpts() *PostgresOpts {
 	env := envhandler.NewEnvs(envlocations.NewLocalEnvs("./.env"))
 	if err := env.EnvLocation.LoadDotEnv(); err != nil {
-		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Error loading env: %v\n", Vals: []any{err}})
 		return nil
 	}
 	return &PostgresOpts{
@@ -66,7 +63,6 @@ func (p *Postgres) Connect() error {
 
 func (p *Postgres) Close() error {
 	if err := p.Conn.Close(); err != nil {
-		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Error closing db: %v\n", Vals: []any{err}})
 		return errorhandler.Wrap(errorhandler.KindInternal, "Error closing db", err, errorhandler.WithOp("db.Close"))
 	}
 	return nil
@@ -79,15 +75,12 @@ func (p *Postgres) uri() string {
 func (p *Postgres) init() error {
 	conn, err := sql.Open("postgres", p.uri())
 	if err != nil {
-		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Unable to connect to database: %v\n", Vals: []any{err}})
 		return errorhandler.Wrap(errorhandler.KindInternal, "unable to connect to database", err, errorhandler.WithOp("db.init"))
 	}
 	err = conn.Ping()
 	if err != nil {
-		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Ping failed: %v\n", Vals: []any{err}})
 		return errorhandler.Wrap(errorhandler.KindUnavailable, "ping failed", err, errorhandler.WithOp("db.init"))
 	}
-	config.Config.Logger.Info(logger.LogMessage{ApplicationPackage: "db", Message: "Connected to PostgreSQL successfully!"})
 	p.Conn = conn
 	return nil
 }
@@ -95,7 +88,6 @@ func (p *Postgres) init() error {
 func (p *Postgres) CreateTable(sql string) error {
 	_, err := p.Conn.Query(sql)
 	if err != nil {
-		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Error creating table: %v\n", Vals: []any{err}})
 		return errorhandler.Wrap(errorhandler.KindInternal, "Error creating table", err, errorhandler.WithOp("db.CreateTable"), errorhandler.WithFields(map[string]any{"sql": sql}))
 	}
 	return nil
@@ -104,25 +96,21 @@ func (p *Postgres) CreateTable(sql string) error {
 func (p *Postgres) QueryRow(dest any, query string, args ...any) error {
 	v := reflect.ValueOf(dest)
 	if v.Kind() != reflect.Ptr || v.Elem().Kind() != reflect.Struct {
-		config.Config.Logger.Error(logger.LogMessage{ApplicationPackage: "db", Message: "dest must be a pointer to a struct"})
 		return errorhandler.New(errorhandler.KindInvalidArgument, "dest must be a pointer to a struct", errorhandler.WithOp("db.QueryRow"))
 	}
 
 	rows, err := p.Conn.Query(query, args...)
 	if err != nil {
-		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Query failed: %s\n", Vals: []any{err}})
 		return errorhandler.Wrap(errorhandler.KindInternal, "Query failed", err, errorhandler.WithOp("db.QueryRow"), errorhandler.WithFields(map[string]any{"query": query, "args": args}))
 	}
 	defer rows.Close()
 
 	if !rows.Next() {
-		config.Config.Logger.Error(logger.LogMessage{ApplicationPackage: "db", Message: "Error no rows"})
 		return errorhandler.New(errorhandler.KindNotFound, "error no rows", errorhandler.WithOp("db.QueryRow"))
 	}
 
 	columns, err := rows.Columns()
 	if err != nil {
-		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Failed to get columns: %v\n", Vals: []any{err}})
 		return errorhandler.Wrap(errorhandler.KindInternal, "Failed to get columns", err, errorhandler.WithOp("db.QueryRow"), errorhandler.WithFields(map[string]any{"query": query, "args": args}))
 	}
 
@@ -133,7 +121,6 @@ func (p *Postgres) QueryRow(dest any, query string, args ...any) error {
 	}
 
 	if err := rows.Scan(valuePtrs...); err != nil {
-		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Failed to scan row: %v\n", Vals: []any{err}})
 		return errorhandler.Wrap(errorhandler.KindInternal, "Failed to scan row", err, errorhandler.WithOp("db.QueryRow"), errorhandler.WithFields(map[string]any{"query": query, "args": args}))
 	}
 
@@ -153,7 +140,6 @@ func (p *Postgres) QueryRow(dest any, query string, args ...any) error {
 				if fieldValue.CanSet() {
 					err := setFieldValue(fieldValue, values[i])
 					if err != nil {
-						config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Error setting field: %v\n", Vals: []any{err}})
 						return errorhandler.Wrap(errorhandler.KindInternal, "Error setting field", err, errorhandler.WithOp("db.QueryRow"), errorhandler.WithFields(map[string]any{"query": query, "args": args}))
 					}
 				}
@@ -168,31 +154,26 @@ func (p *Postgres) QueryRow(dest any, query string, args ...any) error {
 func (p *Postgres) Query(dest any, query string, args ...any) error {
 	ptrVal := reflect.ValueOf(dest)
 	if ptrVal.Kind() != reflect.Ptr {
-		config.Config.Logger.Error(logger.LogMessage{ApplicationPackage: "db", Message: "dest must be a pointer to a slice"})
 		return errorhandler.New(errorhandler.KindInvalidArgument, "dest must be a pointer to a slice", errorhandler.WithOp("db.Query"))
 	}
 	sliceVal := ptrVal.Elem()
 	if sliceVal.Kind() != reflect.Slice {
-		config.Config.Logger.Error(logger.LogMessage{ApplicationPackage: "db", Message: "dest must be a pointer to a slice"})
 		return errorhandler.New(errorhandler.KindInvalidArgument, "dest must point to a slice", errorhandler.WithOp("db.Query"))
 	}
 
 	elemType := sliceVal.Type().Elem()
 	if elemType.Kind() != reflect.Struct {
-		config.Config.Logger.Error(logger.LogMessage{ApplicationPackage: "db", Message: "Slice element type must be struct"})
 		return errorhandler.New(errorhandler.KindInvalidArgument, "Slice element type must be struct", errorhandler.WithOp("db.Query"))
 	}
 
 	rows, err := p.Conn.Query(query, args...)
 	if err != nil {
-		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Query failed: %v\n", Vals: []any{err}})
 		return errorhandler.Wrap(errorhandler.KindInternal, "Query failed", err, errorhandler.WithOp("db.Query"), errorhandler.WithFields(map[string]any{"query": query, "args": args}))
 	}
 	defer rows.Close()
 
 	columns, err := rows.Columns()
 	if err != nil {
-		config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Failed to get colums: %v\n", Vals: []any{err}})
 		return errorhandler.Wrap(errorhandler.KindInternal, "Failed to get columns", err, errorhandler.WithOp("db.Query"), errorhandler.WithFields(map[string]any{"query": query, "args": args}))
 	}
 
@@ -207,7 +188,6 @@ func (p *Postgres) Query(dest any, query string, args ...any) error {
 		}
 
 		if err := rows.Scan(values...); err != nil {
-			config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Scan failed: %v\n", Vals: []any{err}})
 			return errorhandler.Wrap(errorhandler.KindInternal, "Scan failed", err, errorhandler.WithOp("db.Query"), errorhandler.WithFields(map[string]any{"query": query, "args": args}))
 		}
 
@@ -225,7 +205,6 @@ func (p *Postgres) Query(dest any, query string, args ...any) error {
 					fieldValue := newElem.Field(j)
 					if fieldValue.CanSet() {
 						if err := setFieldValue(fieldValue, val); err != nil {
-							config.Config.Logger.Errorf(logger.LogMessage{ApplicationPackage: "db", Message: "Failed to set field %v: %v\n", Vals: []any{field.Name, err}})
 							return errorhandler.Wrap(errorhandler.KindInternal, "Failed to set field "+field.Name, err, errorhandler.WithOp("db.Query"), errorhandler.WithFields(map[string]any{"query": query, "args": args}))
 						}
 					}

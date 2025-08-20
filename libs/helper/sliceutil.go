@@ -1,10 +1,5 @@
 package helper
 
-import (
-	"github.com/Arthur-Conti/guh/config"
-	"github.com/Arthur-Conti/guh/libs/log/logger"
-)
-
 func Contains(slice []any, lookFor any, isSorted bool) bool {
 	if isSorted {
 		return RecursiveSearch(slice, lookFor)
@@ -34,7 +29,6 @@ func RecursiveSearch(slice []any, lookFor any) bool {
 	if intLookFor < slice[0].(int) || intLookFor > len(slice) {
 		return false
 	}
-	config.Config.Logger.Debugf(logger.LogMessage{Message: "%v", Vals: []any{slice[middle]}})
 	if middle > intLookFor {
 		return RecursiveSearch(slice[:middle], lookFor)
 	} else {

@@ -1,14 +1,43 @@
 package fl
 
 import (
-	"github.com/Arthur-Conti/guh/config"
+	applicationpackage "github.com/Arthur-Conti/guh/libs/log/application_package"
 	"github.com/Arthur-Conti/guh/libs/log/logger"
+	"github.com/Arthur-Conti/guh/libs/log/outputs"
 )
 
 func Log(message string) {
-	config.Config.Logger.Debug(logger.LogMessage{ApplicationPackage: "fast_logger", Message: message})
+	plainOpts := outputs.PlainOutputOpts{
+		DebugPattern:   "DEBUG: ",
+		WarningPattern: "WARNING: ",
+		InfoPattern:    "INFO: ",
+		ErrorPattern:   "ERROR: ",
+	}
+	plainOutput := outputs.NewPlainOutput(plainOpts)
+	appPackage := applicationpackage.NewPackageLevel()
+	loggerOpts := logger.LoggerOpts{
+		OutputType:         plainOutput,
+		LevelStr:           "debug",
+		ApplicationPackage: *appPackage,
+	}
+	l := logger.NewLogger(loggerOpts)
+	l.Debug(logger.LogMessage{ApplicationPackage: "fast_logger", Message: message})
 }
 
 func Logf(message string, args ...any) {
-	config.Config.Logger.Debugf(logger.LogMessage{ApplicationPackage: "fast_logger", Message: message, Vals: args})
+	plainOpts := outputs.PlainOutputOpts{
+		DebugPattern:   "DEBUG: ",
+		WarningPattern: "WARNING: ",
+		InfoPattern:    "INFO: ",
+		ErrorPattern:   "ERROR: ",
+	}
+	plainOutput := outputs.NewPlainOutput(plainOpts)
+	appPackage := applicationpackage.NewPackageLevel()
+	loggerOpts := logger.LoggerOpts{
+		OutputType:         plainOutput,
+		LevelStr:           "debug",
+		ApplicationPackage: *appPackage,
+	}
+	l := logger.NewLogger(loggerOpts)
+	l.Debugf(logger.LogMessage{ApplicationPackage: "fast_logger", Message: message, Vals: args})
 }

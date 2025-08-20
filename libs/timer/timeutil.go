@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Arthur-Conti/guh/config"
-	"github.com/Arthur-Conti/guh/libs/log/logger"
+	fl "github.com/Arthur-Conti/guh/libs/fast_logger"
 )
 
 type TimerGrade string
@@ -61,5 +60,5 @@ func (t *Timer) TestFunction(function func()) {
 	function()
 	duration := t.End()
 	grade := TimerGradeMap[t.ClassifyTime(duration)]
-	config.Config.Logger.Infof(logger.LogMessage{ApplicationPackage: "timer", Message: "Function was classified as %v grade. It took: %v\n", Vals: []any{grade, duration}})
+	fl.Logf("Function was classified as %v grade. It took: %v\n", grade, duration)
 }
