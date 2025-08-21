@@ -11,6 +11,7 @@ import (
 	envhandler "github.com/Arthur-Conti/guh/libs/env_handler"
 	envlocations "github.com/Arthur-Conti/guh/libs/env_handler/env_locations"
 	errorhandler "github.com/Arthur-Conti/guh/libs/error_handler"
+	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 )
 
@@ -223,6 +224,31 @@ func setFieldValue(fieldValue reflect.Value, val any) error {
 	if val == nil {
 		return nil
 	}
+
+	fieldType := fieldValue.Type()
+
+	// Caso especial para uuid.UUID
+	if fieldType == reflect.TypeOf(uuid.UUID{}) {
+		switch v := val.(type) {
+		case []byte:
+			parsed, err := uuid.ParseBytes(v)
+			if err != nil {
+				return err
+			}
+			fieldValue.Set(reflect.ValueOf(parsed))
+			return nil
+		case string:
+			parsed, err := uuid.Parse(v)
+			if err != nil {
+				return err
+			}
+			fieldValue.Set(reflect.ValueOf(parsed))
+			return nil
+		default:
+			return nil // ou erro se quiser
+		}
+	}
+
 	switch v := val.(type) {
 	case []byte:
 		strVal := string(v)
@@ -254,7 +280,7 @@ func setFieldValue(fieldValue reflect.Value, val any) error {
 			}
 			fieldValue.SetBool(bv)
 		default:
-			// Unsupported type; do nothing or return error
+			// Unsupported type; do nothing
 		}
 	case int64:
 		if fieldValue.Kind() >= reflect.Int && fieldValue.Kind() <= reflect.Int64 {
@@ -278,5 +304,6 @@ func setFieldValue(fieldValue reflect.Value, val any) error {
 			fieldValue.Set(rv)
 		}
 	}
+
 	return nil
 }
