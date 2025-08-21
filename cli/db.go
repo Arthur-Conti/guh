@@ -14,6 +14,7 @@ import (
 	"github.com/Arthur-Conti/guh/libs/db"
 	errorhandler "github.com/Arthur-Conti/guh/libs/error_handler"
 	"github.com/Arthur-Conti/guh/libs/log/logger"
+	projectconfig "github.com/Arthur-Conti/guh/libs/project_config"
 )
 
 const defaultMigrationsDir = "./internal/infra/db/migrations"
@@ -106,9 +107,37 @@ func Db() error {
 		return createNewSeed(*seedDir, *seedNew)
 	}
 
-	// For DB-connected actions, open connection first
-	p, err := db.DefaultPostgres()
+	pc, err := projectconfig.Load()
 	if err != nil {
+		return errorhandler.Wrap(errorhandler.KindInternal, "failed to load project config", err, errorhandler.WithOp("db"))
+	}
+	
+	defaultOpts := db.GetDefaultPostgresOpts()
+	if pc.DbUser == "" {
+		pc.DbUser = defaultOpts.User
+	}
+	if pc.DbPassword == "" {
+		pc.DbPassword = defaultOpts.Password
+	}
+	if pc.DbIP == "" {
+		pc.DbIP = defaultOpts.IP
+	}
+	if pc.DbPort == "" {
+		pc.DbPort = defaultOpts.Port
+	}
+	if pc.DbDatabase == "" {
+		pc.DbDatabase = defaultOpts.Database
+	}
+
+	// For DB-connected actions, open connection first
+	p := db.NewPostgres(db.PostgresOpts{
+		User:     pc.DbUser,
+		Password: pc.DbPassword,
+		IP:       pc.DbIP,
+		Port:     pc.DbPort,
+		Database: pc.DbDatabase,
+	})
+	if err := p.Connect(); err != nil {
 		return errorhandler.Wrap(errorhandler.KindInternal, "failed to connect database", err, errorhandler.WithOp("db"))
 	}
 	defer p.Close()

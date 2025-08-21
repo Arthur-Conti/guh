@@ -10,9 +10,14 @@ import (
 const configFilePath string = ".guh.yaml"
 
 type ProjectConfig struct {
-	ServiceName string `yaml:"serviceName"`
-	ModName     string `yaml:"modName"`
-	BaseUrl     string `yaml:"baseUrl"`
+	ServiceName  string `yaml:"serviceName"`
+	ModName      string `yaml:"modName"`
+	BaseUrl      string `yaml:"baseUrl"`
+	DbUser       string `yaml:"dbUser"`
+	DbPassword   string `yaml:"dbPassword"`
+	DbIP         string `yaml:"dbIP"`
+	DbPort       string `yaml:"dbPort"`
+	DbDatabase   string `yaml:"dbDatabase"`
 }
 
 func Load() (*ProjectConfig, error) {
